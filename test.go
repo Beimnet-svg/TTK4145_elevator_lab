@@ -1,6 +1,8 @@
 package main
 
-
-func main()  {
+func main() {
+	println("Hei")
+	println("Hei")
+	println("Hei")
 	println("Hei")
 }

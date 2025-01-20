@@ -3,19 +3,39 @@ package main
 import "Driver-go/elevio"
 import "fmt"
 
+var d elevio.MotorDirection
+var floor int
+
+var drv_buttons = make(chan elevio.ButtonEvent)
+var drv_floors  = make(chan int)
+var drv_obstr   = make(chan bool)
+var drv_stop    = make(chan bool)    
+
+
+
+func init(){
+
+    d = elevio.MD_Up
+
+    for {
+        go elevio.PollFloorSensor(drv_floors)
+        floor = <- drv_floors
+        if floor != -1 {
+            d = elevio.MD_Stop
+        }
+        elevio.SetMotorDirection(d)
+    }
+    
+}
+
 func main(){
 
     numFloors := 4
 
     elevio.Init("localhost:15657", numFloors)
     
-    var d elevio.MotorDirection = elevio.MD_Up
+    //var d elevio.MotorDirection = elevio.MD_Up
     //elevio.SetMotorDirection(d)
-    
-    drv_buttons := make(chan elevio.ButtonEvent)
-    drv_floors  := make(chan int)
-    drv_obstr   := make(chan bool)
-    drv_stop    := make(chan bool)    
     
     go elevio.PollButtons(drv_buttons)
     go elevio.PollFloorSensor(drv_floors)

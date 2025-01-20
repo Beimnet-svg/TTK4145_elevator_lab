@@ -42,6 +42,7 @@ func Init(addr string, numFloors int) {
 		fmt.Println("Driver already initialized!")
 		return
 	}
+	
 	_numFloors = numFloors
 	_mtx = sync.Mutex{}
 	var err error

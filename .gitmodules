@@ -1,0 +1,15 @@
+[submodule "Project-resources"]
+	path = Project-resources
+	url = https://github.com/TTK4145/Project-resources
+[submodule "Exercise3/Network-go"]
+	path = Exercise3/Network-go
+	url = https://github.com/TTK4145/Network-go.git
+[submodule "Exercise3/driver-go"]
+	path = Exercise3/driver-go
+	url = https://github.com/TTK4145/driver-go.git
+[submodule "Network-go"]
+	path = Network-go
+	url = https://github.com/TTK4145/Network-go.git
+[submodule "driver-go"]
+	path = driver-go
+	url = https://github.com/TTK4145/driver-go.git

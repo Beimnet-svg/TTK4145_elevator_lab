@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-	conn, err := net.Dial("tcp", "10.100.23.17:34933")
+	conn, err := net.Dial("tcp", "10.100.23.204:34933")
 
 	if err != nil {
 		log.Fatal(err)
@@ -19,7 +19,7 @@ func main() {
 
 	//buffer := make([]byte, 1024)
 	message := "Connect to: 10.100.23.17:34933\n\000"
-	message2 := "HELLO FROM CLIENT\n\000"
+	message2 := "HELLO FROM SERVER\n\000"
 	//buffer = []byte(message)
 	conn.Write([]byte(message))
 	for {

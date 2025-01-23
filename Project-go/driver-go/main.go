@@ -9,11 +9,11 @@ var floor int
 var drv_buttons = make(chan elevio.ButtonEvent)
 var drv_floors  = make(chan int)
 var drv_obstr   = make(chan bool)
-var drv_stop    = make(chan bool)    
+var drv_stop    = make(chan bool) 
 
+var b = make([]elevio.ButtonEvent, 10)
 
-
-func init(){
+func init_elevator(){
 
     d = elevio.MD_Up
 
@@ -22,15 +22,19 @@ func init(){
         floor = <- drv_floors
         if floor != -1 {
             d = elevio.MD_Stop
+            elevio.SetMotorDirection(d)
+            break
         }
         elevio.SetMotorDirection(d)
     }
-    
 }
+
 
 func main(){
 
     numFloors := 4
+
+    init_elevator()
 
     elevio.Init("localhost:15657", numFloors)
     
@@ -47,7 +51,8 @@ func main(){
         select {
         case a := <- drv_buttons:
             fmt.Printf("%+v\n", a)
-            elevio.SetButtonLamp(a.Button, a.Floor, true)
+            elevio.AddToQueue(a.Button, a.Floor, b)
+            elevio.LightButtons(b, numFloors)
             
         case a := <- drv_floors:
             fmt.Printf("%+v\n", a)
@@ -77,3 +82,5 @@ func main(){
         }
     }    
 }
+
+

@@ -1,13 +1,19 @@
 package main
 
 import (
+
 	elevator_motion "Driver-go/Elevator_Motion"
+
+	"Driver-go/doors"
+
 	"Driver-go/elevio"
 	"fmt"
 )
 
 var d elevio.MotorDirection
+
 var currentFloor int
+
 
 var drv_buttons = make(chan elevio.ButtonEvent)
 var drv_floors = make(chan int)
@@ -16,10 +22,12 @@ var drv_stop = make(chan bool)
 
 var b = make([]elevio.ButtonEvent, 10)
 
+
 func init_elevator() {
 	go elevio.PollFloorSensor(drv_floors)
 	d = elevio.MD_Up
 	elevio.SetMotorDirection(d)
+
 
 	currentFloor = <-drv_floors
 	d = elevio.MD_Stop
@@ -29,6 +37,7 @@ func init_elevator() {
 
 func main() {
 
+
 	numFloors := 4
 
 	init_elevator()
@@ -37,6 +46,7 @@ func main() {
 
 	//var d elevio.MotorDirection = elevio.MD_Up
 	//elevio.SetMotorDirection(d)
+
 
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)

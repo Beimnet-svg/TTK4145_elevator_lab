@@ -33,3 +33,14 @@ func MoveDown(currentFloor, targetFloor int, drv_floors chan int) {
 		}
 	}
 }
+
+func setDirection(currentFloor, targetFloor int, drv_floors chan int, d int)  {
+	if currentFloor >= targetFloor {
+		
+		return
+	}
+	if currentFloor <= targetFloor {
+		
+		return
+	}
+	

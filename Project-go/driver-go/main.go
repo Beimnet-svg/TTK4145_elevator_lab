@@ -1,10 +1,13 @@
 package main
 
-import "Driver-go/elevio"
-import "fmt"
+import (
+	elevator_motion "Driver-go/Elevator_Motion"
+	"Driver-go/elevio"
+	"fmt"
+)
 
 var d elevio.MotorDirection
-var floor int
+var currentFloor int
 
 var drv_buttons = make(chan elevio.ButtonEvent)
 var drv_floors  = make(chan int)
@@ -27,7 +30,11 @@ func init_elevator(){
 
 func main(){
 
-    numFloors := 4
+	for {
+		select {
+		case a := <-drv_buttons:
+			fmt.Printf("Button pressed: %+v\n", a)
+			elevio.SetButtonLamp(a.Button, a.Floor, true)
 
     init_elevator()
 

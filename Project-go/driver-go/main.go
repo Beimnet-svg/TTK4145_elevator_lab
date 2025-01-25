@@ -7,7 +7,7 @@ import (
 )
 
 var d elevio.MotorDirection
-var floor int
+var currentFloor int
 
 var drv_buttons = make(chan elevio.ButtonEvent)
 var drv_floors = make(chan int)
@@ -18,8 +18,8 @@ func init() {
 	d = elevio.MD_Up
 	go elevio.PollFloorSensor(drv_floors)
 	for {
-		floor = <-drv_floors
-		if floor != -1 {
+		currentFloor = <-drv_floors
+		if currentFloor != -1 {
 			d = elevio.MD_Stop
 			elevio.SetMotorDirection(d)
 			break
@@ -45,23 +45,13 @@ func main() {
 		select {
 		case a := <-drv_buttons:
 			fmt.Printf("Button pressed: %+v\n", a)
-			if a.Floor > floor {
-				elevator_motion.MoveUp(floor, a.Floor, drv_floors)
-			} else if a.Floor < floor {
-				elevator_motion.MoveDown(floor, a.Floor, drv_floors)
-			}
-			floor = a.Floor
 			elevio.SetButtonLamp(a.Button, a.Floor, true)
 
 		case a := <-drv_floors:
-			fmt.Printf("%+v\n", a)
-			if a == numFloors-1 {
-				d = elevio.MD_Down
-			} else if a == 0 {
-				d = elevio.MD_Up
-			}
+			currentFloor = a
+			d = elevator_motion.SetDirection(currentFloor, a, d)
 			elevio.SetMotorDirection(d)
-
+			
 		case a := <-drv_obstr:
 			fmt.Printf("%+v\n", a)
 			if a {

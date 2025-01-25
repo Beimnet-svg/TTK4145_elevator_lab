@@ -75,7 +75,45 @@ func SetStopLamp(value bool) {
 	write([4]byte{5, toByte(value), 0, 0})
 }
 
+func LightButtons(b []ButtonEvent, numFloors int) {
+	for a := 0; a < numFloors; a++ {
+		for i := ButtonType(0); i < 3; i++ {
+			if contains(b, ButtonEvent{a, i}) {
+				SetButtonLamp(i, a, true)
+			} else {
+				SetButtonLamp(i, a, false)
+				
+			}
+		}
+	}
+}
 
+func contains(s []ButtonEvent, e ButtonEvent) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func AddToQueue(button ButtonType, floor int, b []ButtonEvent) []ButtonEvent {
+	if contains(b, ButtonEvent{floor, button}) {
+		return b
+	}
+	b = append(b, ButtonEvent{floor, button})
+	return b
+}
+
+func RemoveFromQueue(floor int, d MotorDirection, b []ButtonEvent) []ButtonEvent {
+	for i, a := range b {
+		if a.Floor == floor && (a.Button == BT_Cab || d == MD_Stop || (d == MD_Up && a.Button == BT_HallUp) || (d == MD_Down && a.Button == BT_HallDown)) {
+			b = append(b[:i], b[i+1:]...)
+			break
+		}
+	}
+	return b
+}
 
 func PollButtons(receiver chan<- ButtonEvent) {
 	prev := make([][3]bool, _numFloors)

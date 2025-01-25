@@ -2,6 +2,7 @@ package doors
 
 import (
 	"Driver-go/elevio"
+	"fmt"
 	"time"
 )
 
@@ -9,28 +10,31 @@ var (
 	isDoorOpen =false
 )
 
-func  OpenDoor(drv_floors chan int) int {
-	floor:=<-drv_floors
-	if floor==0{
+func  OpenDoor(floor int) int {
+	
+	if floor>=0{
 
 		isDoorOpen=true
 		elevio.SetDoorOpenLamp(true)
+		fmt.Printf("Open door\n")
 		time.Sleep(3* time.Second)
+		// elevio.SetDoorOpenLamp(false)
+		fmt.Printf("closing door\n")
 
-		return 1
+	return 1
 	} else {
 		return 0
 	}
 	
 }
 
-func CloseDoor(drv_floors chan int, drv_obstr chan bool) int {
+func CloseDoor(floor int, obstr bool) int {
 	for {
 
         // Check if there is an obstruction
-        if <-drv_obstr {
+        if obstr==true {
             // Wait until the obstruction is cleared
-            for obstruction := <-drv_obstr; obstruction; obstruction = <-drv_obstr {
+            for obstr {
                 // Keep waiting until the channel sends false
             }
         } else {

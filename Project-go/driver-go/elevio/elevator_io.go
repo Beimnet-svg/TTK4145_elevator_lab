@@ -1,18 +1,18 @@
 package elevio
 
-import "time"
-import "sync"
-import "net"
-import "fmt"
-
-
+import (
+	"fmt"
+	"net"
+	"sync"
+	"time"
+)
 
 const _pollRate = 20 * time.Millisecond
 
-var _initialized    bool = false
-var _numFloors      int = 4
-var _mtx            sync.Mutex
-var _conn           net.Conn
+var _initialized bool = false
+var _numFloors int = 4
+var _mtx sync.Mutex
+var _conn net.Conn
 
 type MotorDirection int
 
@@ -35,14 +35,12 @@ type ButtonEvent struct {
 	Button ButtonType
 }
 
-
-
 func Init(addr string, numFloors int) {
 	if _initialized {
 		fmt.Println("Driver already initialized!")
 		return
 	}
-	
+
 	_numFloors = numFloors
 	_mtx = sync.Mutex{}
 	var err error
@@ -52,8 +50,6 @@ func Init(addr string, numFloors int) {
 	}
 	_initialized = true
 }
-
-
 
 func SetMotorDirection(dir MotorDirection) {
 	write([4]byte{1, byte(dir), 0, 0})
@@ -82,7 +78,7 @@ func LightButtons(b []ButtonEvent, numFloors int) {
 				SetButtonLamp(i, a, true)
 			} else {
 				SetButtonLamp(i, a, false)
-				
+
 			}
 		}
 	}
@@ -102,12 +98,14 @@ func AddToQueue(button ButtonType, floor int, b []ButtonEvent) []ButtonEvent {
 		return b
 	}
 	b = append(b, ButtonEvent{floor, button})
+	fmt.Printf("Appending Floor %d\n", b)
 	return b
 }
 
 func RemoveFromQueue(floor int, d MotorDirection, b []ButtonEvent) []ButtonEvent {
 	for i, a := range b {
-		if a.Floor == floor && (a.Button == BT_Cab || d == MD_Stop || (d == MD_Up && a.Button == BT_HallUp) || (d == MD_Down && a.Button == BT_HallDown)) {
+		if a.Floor == floor {
+			fmt.Printf("Removing Floor\n")
 			b = append(b[:i], b[i+1:]...)
 			break
 		}
@@ -115,6 +113,7 @@ func RemoveFromQueue(floor int, d MotorDirection, b []ButtonEvent) []ButtonEvent
 	return b
 }
 
+// && (a.Button == BT_Cab || d == MD_Stop || (d == MD_Up && a.Button == BT_HallUp) || (d == MD_Down && a.Button == BT_HallDown)) {
 func PollButtons(receiver chan<- ButtonEvent) {
 	prev := make([][3]bool, _numFloors)
 	for {
@@ -167,9 +166,6 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	}
 }
 
-
-
-
 func GetButton(button ButtonType, floor int) bool {
 	a := read([4]byte{6, byte(button), byte(floor), 0})
 	return toBool(a[1])
@@ -194,32 +190,33 @@ func GetObstruction() bool {
 	return toBool(a[1])
 }
 
-
-
-
-
 func read(in [4]byte) [4]byte {
 	_mtx.Lock()
 	defer _mtx.Unlock()
-	
+
 	_, err := _conn.Write(in[:])
-	if err != nil { panic("Lost connection to Elevator Server") }
-	
+	if err != nil {
+		panic("Lost connection to Elevator Server")
+	}
+
 	var out [4]byte
 	_, err = _conn.Read(out[:])
-	if err != nil { panic("Lost connection to Elevator Server") }
-	
+	if err != nil {
+		panic("Lost connection to Elevator Server")
+	}
+
 	return out
 }
 
 func write(in [4]byte) {
 	_mtx.Lock()
 	defer _mtx.Unlock()
-	
-	_, err := _conn.Write(in[:])
-	if err != nil { panic("Lost connection to Elevator Server") }
-}
 
+	_, err := _conn.Write(in[:])
+	if err != nil {
+		panic("Lost connection to Elevator Server")
+	}
+}
 
 func toByte(a bool) byte {
 	var b byte = 0

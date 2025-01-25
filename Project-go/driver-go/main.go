@@ -14,19 +14,14 @@ var drv_stop    = make(chan bool)
 var b = make([]elevio.ButtonEvent, 10)
 
 func init_elevator(){
-
+    go elevio.PollFloorSensor(drv_floors)
     d = elevio.MD_Up
+    elevio.SetMotorDirection(d)
 
-    for {
-        go elevio.PollFloorSensor(drv_floors)
-        floor = <- drv_floors
-        if floor != -1 {
-            d = elevio.MD_Stop
-            elevio.SetMotorDirection(d)
-            break
-        }
-        elevio.SetMotorDirection(d)
-    }
+    floor = <- drv_floors
+    d = elevio.MD_Stop
+    elevio.SetMotorDirection(d)
+
 }
 
 

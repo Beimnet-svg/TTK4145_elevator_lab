@@ -1,10 +1,13 @@
 package main
 
-import "Driver-go/elevio"
-import "fmt"
+import (
+	"Driver-go/doors"
+	"Driver-go/elevio"
+	"fmt"
+)
 
 var d elevio.MotorDirection
-var floor int
+
 
 var drv_buttons = make(chan elevio.ButtonEvent)
 var drv_floors  = make(chan int)
@@ -12,6 +15,8 @@ var drv_obstr   = make(chan bool)
 var drv_stop    = make(chan bool) 
 
 var b = make([]elevio.ButtonEvent, 10)
+
+
 
 func init_elevator(){
     go elevio.PollFloorSensor(drv_floors)
@@ -23,6 +28,7 @@ func init_elevator(){
     elevio.SetMotorDirection(d)
 
 }
+
 
 
 func main(){
@@ -49,12 +55,17 @@ func main(){
             elevio.AddToQueue(a.Button, a.Floor, b)
             elevio.LightButtons(b, numFloors)
             
+            
         case a := <- drv_floors:
             fmt.Printf("%+v\n", a)
+            doors.OpenDoor(drv_floors)
+            doors.CloseDoor(drv_floors,drv_obstr)
+
             if a == numFloors-1 {
                 d = elevio.MD_Down
             } else if a == 0 {
                 d = elevio.MD_Up
+                
             }
             elevio.SetMotorDirection(d)
             
@@ -72,6 +83,7 @@ func main(){
             for f := 0; f < numFloors; f++ {
                 for b := elevio.ButtonType(0); b < 3; b++ {
                     elevio.SetButtonLamp(b, f, false)
+                    //If between floors, dont open doors
                 }
             }
         }

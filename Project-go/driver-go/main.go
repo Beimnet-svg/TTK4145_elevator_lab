@@ -1,7 +1,7 @@
 package main
 
 import (
-	elevator_motion "Driver-go/Elevator_Motion"
+	"Driver-go/elevator_fsm"
 
 	doors "Driver-go/Doors"
 
@@ -17,10 +17,18 @@ var drv_buttons = make(chan elevio.ButtonEvent)
 var drv_floors = make(chan int)
 var drv_obstr = make(chan bool)
 var drv_stop = make(chan bool)
+var e = elevio.Elevator{
+	CurrentFloor: 0,
+	Direction:    elevio.MD_Stop,
+	Behaviour:    elevio.EB_Idle,
+	Requests:     []elevio.ButtonEvent{},
+	NumFloors:    4,
+}
+
 
 var b []elevio.ButtonEvent
 
-func init_elevator() {
+func init_elevator(e elevio.Elevator) {
 
 	for a := 0; a < numFloors; a++ {
 		for i := elevio.ButtonType(0); i < 3; i++ {
@@ -28,59 +36,44 @@ func init_elevator() {
 		}
 	}
 
-	d = elevio.MD_Up
-	elevio.SetMotorDirection(d)
+	e.Direction = elevio.MD_Up
+	elevio.SetMotorDirection(e.Direction)
 
 	elevio.SetDoorOpenLamp(false)
-	currentFloor = <-drv_floors
-	d = elevio.MD_Stop
-	elevio.SetMotorDirection(d)
+	e.CurrentFloor = <-drv_floors
+	e.CurrentFloor=e.CurrentFloor
+	e.Direction = elevio.MD_Stop
+	elevio.SetMotorDirection(e.Direction)
 
 }
 
 func main() {
 
 	elevio.Init("localhost:15657", numFloors)
+	
 
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 
-	init_elevator()
+	init_elevator(e)
 	for {
 		select {
 		case a := <-drv_buttons:
-			fmt.Printf("%+v\n", a)
-
-			b = elevio.AddToQueue(a.Button, a.Floor, b)
-			elevio.LightButtons(b, numFloors)
-			d = elevator_motion.SetDirection(currentFloor, b[0].Floor, d)
-			elevio.SetMotorDirection(d)
+		elevator_fsm.FSM_onButtonPress(&e,a )
+			
 
 		case a := <-drv_floors:
-			fmt.Printf("%+v\n", a)
-			currentFloor = a
-			d = elevator_motion.SetDirection(currentFloor, b[0].Floor, d)
-			elevio.SetMotorDirection(d)
-
-			if d == elevio.MD_Stop {
-				b = doors.OpenDoor(b[0].Floor, currentFloor, b, numFloors, drv_buttons)
-				b = elevio.RemoveFromQueue(currentFloor, d, b)
-				elevio.LightButtons(b, numFloors)
-				if len(b) != 0 {
-					d = elevator_motion.SetDirection(currentFloor, b[0].Floor, d)
-					elevio.SetMotorDirection(d)
-				}
-
-			}
+			
+			elevator_fsm.FSM_onFloorArrival(a, &e)
 
 		case a := <-drv_obstr:
 			fmt.Printf("%+v\n", a)
-			if a {
+			if a && doors.IsDoorOpen {
 				elevio.SetMotorDirection(elevio.MD_Stop)
 			} else {
-				elevio.SetMotorDirection(d)
+				elevio.SetMotorDirection(e.Direction)
 			}
 
 		case a := <-drv_stop:

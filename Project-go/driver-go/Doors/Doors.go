@@ -7,12 +7,12 @@ import (
 )
 
 var (
-	isDoorOpen = false
+	IsDoorOpen = false
 )
 
-func OpenDoor(targetFloor int, floor int, b []elevio.ButtonEvent, numFloors int, drv_button chan elevio.ButtonEvent) []elevio.ButtonEvent {
+func OpenDoor( floor int, b []elevio.ButtonEvent, numFloors int, drv_button chan elevio.ButtonEvent) []elevio.ButtonEvent {
 
-	isDoorOpen = true
+	IsDoorOpen = true
 	elevio.SetDoorOpenLamp(true)
 	fmt.Printf("Open door\n")
 	startTime := time.Now()
@@ -27,6 +27,7 @@ func OpenDoor(targetFloor int, floor int, b []elevio.ButtonEvent, numFloors int,
 		elapsed := time.Since(startTime)
 
 		if elapsed >= 3*time.Second {
+			IsDoorOpen = false
 			break
 		}
 	}

@@ -16,10 +16,12 @@ var _conn net.Conn
 
 type MotorDirection int
 
+
 const (
 	MD_Up   MotorDirection = 1
 	MD_Down                = -1
 	MD_Stop                = 0
+
 )
 
 type ButtonType int
@@ -30,9 +32,27 @@ const (
 	BT_Cab                 = 2
 )
 
+type ElevatorBehaviour int
+
+const (
+	EB_Idle ElevatorBehaviour = 0
+	EB_Moving =1
+	EB_DoorOpen = 2
+)
+
 type ButtonEvent struct {
 	Floor  int
 	Button ButtonType
+}
+
+
+
+type Elevator struct {
+	CurrentFloor int
+	Direction    MotorDirection
+	Behaviour    ElevatorBehaviour
+	Requests     []ButtonEvent
+	NumFloors  int
 }
 
 func Init(addr string, numFloors int) {

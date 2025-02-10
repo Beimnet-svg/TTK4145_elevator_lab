@@ -20,3 +20,5 @@ func SetDirection(currentFloor int, targetFloor int, d elevio.MotorDirection) el
 	}
 
 }
+
+

@@ -2,8 +2,6 @@ package requests
 
 import "Driver-go/elevio"
 
-
-
 func RequestShouldStop(e elevio.Elevator) bool {
 	switch e.Direction {
 	case elevio.MD_Down:
@@ -57,3 +55,14 @@ func requestsBelow(e elevio.Elevator) bool {
 	return false
 }
 
+func RequestChooseDir() {
+
+}
+
+func ReqestShouldClearImmideatly() {
+
+}
+
+func RequestClearAtCurrentFloor() {
+
+}

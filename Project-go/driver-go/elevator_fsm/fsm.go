@@ -101,6 +101,10 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 	e.Behaviour = elevio.EB_Moving
 }
 
+func FSM_doorTimeOut() {
+
+}
+
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool) {
 	fmt.Println("here")
 	init_elevator(drv_floors)
@@ -123,12 +127,8 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obst
 			}
 
 		case a := <-drv_stop:
-			fmt.Printf("%+v\n", a)
-			for f := 0; f < e.NumFloors; f++ {
-				for b := elevio.ButtonType(0); b < 3; b++ {
-					elevio.SetButtonLamp(b, f, false)
-				}
-			}
+			fmt.Println("Stopped has been pressed", a)
+
 		}
 	}
 

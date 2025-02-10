@@ -2,8 +2,6 @@ package main
 
 import (
 	"Driver-go/elevator_fsm"
-	"fmt"
-	"time"
 
 	"Driver-go/elevio"
 )
@@ -32,8 +30,7 @@ func main() {
 	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr, drv_stop)
 
 	for {
-		fmt.Println("Hello")
-		time.Sleep(3 * time.Second)
+		//Implement ex 4 in here
 	}
 
 }

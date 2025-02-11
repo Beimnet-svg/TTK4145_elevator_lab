@@ -99,29 +99,33 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 
 func FSM_doorTimeOut() {
 	fmt.Println("\n\nFSM_doorTimeOut()")
-	elevio.SetDoorOpenLamp(false) // Close the door light
 
 	if e.Behaviour == elevio.EB_DoorOpen {
+		//delay for door timeout
 		time.Sleep(3 * time.Second)
-		if len(e.Requests) == 0 {
-			// No requests, set to idle
-			e.Behaviour = elevio.EB_Idle
-			e.Direction = elevio.MD_Stop
-		} else {
-			// Choose new direction and behavior
-			e.Direction = elevator_motion.SetDirection(e.CurrentFloor, e.Requests[0].Floor, e.Direction)
+		elevio.SetDoorOpenLamp(false)
+		// Clear requests at the current floor
+		e = requests.RequestClearAtCurrentFloor(e)
 
-			if e.Direction == elevio.MD_Stop {
-				e.Behaviour = elevio.EB_Idle
-			} else {
-				e.Behaviour = elevio.EB_Moving
-				elevio.SetMotorDirection(e.Direction) // Start moving
-			}
+		//error for requests routines is expected as dependency doesn't exist here
+		// Choose next direction & behavior
+		e.Direction, e.Behaviour = requests.RequestChooseDir(e, elevio.BT_Cab)
+
+		switch e.Behaviour {
+		case elevio.EB_DoorOpen:
+			// Restart door timeout if still open as per the next order
+			time.Sleep(3 * time.Second)
+			elevio.SetDoorOpenLamp(true)
+
+		case elevio.EB_Moving:
+			elevio.SetMotorDirection(e.Direction)
+
+		case elevio.EB_Idle:
+			e.Direction = elevio.MD_Stop
 		}
 	}
 
-	fmt.Println("\nNew state:")
-	fmt.Printf("Floor: %d, Direction: %d, Behaviour: %d\n", e.CurrentFloor, e.Direction, e.Behaviour)
+	fmt.Printf("New State: Floor=%d, Dir=%d, Behaviour=%d\n", e.CurrentFloor, e.Direction, e.Behaviour)
 }
 
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool) {

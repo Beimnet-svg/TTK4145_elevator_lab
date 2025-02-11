@@ -5,6 +5,7 @@ import (
 	elevator_motion "Driver-go/Elevator_Motion"
 	"Driver-go/elevio"
 	"fmt"
+	"time"
 )
 
 var (
@@ -22,7 +23,6 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 
 	elevio.SetFloorIndicator(floor)
 	e.CurrentFloor = floor
-	fmt.Printf("Her")
 	e.Direction = elevator_motion.SetDirection(e.CurrentFloor, e.Requests[0].Floor, e.Direction)
 	elevio.SetMotorDirection(e.Direction)
 
@@ -72,21 +72,17 @@ func init_elevator(drv_floors chan int) {
 			elevio.SetButtonLamp(i, a, false)
 		}
 	}
-	fmt.Println("After loop")
 
 	e.Direction = elevio.MD_Up
-	fmt.Println(e.Direction)
 
 	elevio.SetMotorDirection(e.Direction)
 
 	elevio.SetDoorOpenLamp(false)
 	e.CurrentFloor = <-drv_floors
-	fmt.Println("After set dir")
 
 	e.CurrentFloor = e.CurrentFloor
 	e.Direction = elevio.MD_Stop
 	elevio.SetMotorDirection(e.Direction)
-	fmt.Println("End of init")
 
 }
 
@@ -102,11 +98,33 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 }
 
 func FSM_doorTimeOut() {
+	fmt.Println("\n\nFSM_doorTimeOut()")
+	elevio.SetDoorOpenLamp(false) // Close the door light
 
+	if e.Behaviour == elevio.EB_DoorOpen {
+		time.Sleep(3 * time.Second)
+		if len(e.Requests) == 0 {
+			// No requests, set to idle
+			e.Behaviour = elevio.EB_Idle
+			e.Direction = elevio.MD_Stop
+		} else {
+			// Choose new direction and behavior
+			e.Direction = elevator_motion.SetDirection(e.CurrentFloor, e.Requests[0].Floor, e.Direction)
+
+			if e.Direction == elevio.MD_Stop {
+				e.Behaviour = elevio.EB_Idle
+			} else {
+				e.Behaviour = elevio.EB_Moving
+				elevio.SetMotorDirection(e.Direction) // Start moving
+			}
+		}
+	}
+
+	fmt.Println("\nNew state:")
+	fmt.Printf("Floor: %d, Direction: %d, Behaviour: %d\n", e.CurrentFloor, e.Direction, e.Behaviour)
 }
 
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool) {
-	fmt.Println("here")
 	init_elevator(drv_floors)
 
 	for {
@@ -117,6 +135,7 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obst
 		case a := <-drv_floors:
 
 			FSM_onFloorArrival(a, drv_buttons)
+			FSM_doorTimeOut()
 
 		case a := <-drv_obstr:
 			fmt.Printf("%+v\n", a)

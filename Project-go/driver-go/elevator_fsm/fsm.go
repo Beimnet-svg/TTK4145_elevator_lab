@@ -80,7 +80,6 @@ func init_elevator(drv_floors chan int) {
 	elevio.SetDoorOpenLamp(false)
 	e.CurrentFloor = <-drv_floors
 
-	e.CurrentFloor = e.CurrentFloor
 	e.Direction = elevio.MD_Stop
 	elevio.SetMotorDirection(e.Direction)
 

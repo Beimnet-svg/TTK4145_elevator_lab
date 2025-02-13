@@ -32,7 +32,6 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 				elevio.SetMotorDirection(elevio.MD_Stop)
 				e = requests.RequestClearAtCurrentFloor(e)
 				elevio.LightButtons(e)
-				e.Direction = elevio.MD_Stop
 				e.Behaviour = elevio.EB_DoorOpen
 				elevio.SetDoorOpenLamp(true)
 				timer.StartTimer(e.DoorOpenDuration)

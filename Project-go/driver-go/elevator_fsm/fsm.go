@@ -4,7 +4,9 @@ import (
 	doors "Driver-go/Doors"
 	elevator_motion "Driver-go/Elevator_Motion"
 	requests "Driver-go/Requests"
+	timer "Driver-go/Timer"
 	"Driver-go/elevio"
+	"Timer/timer"
 	"fmt"
 )
 
@@ -16,6 +18,7 @@ var (
 		Behaviour:    elevio.EB_Idle,
 		Requests:     [4][3]int{},
 		NumFloors:    4,
+		DoorOpenDuration: 3,
 	}
 )
 
@@ -33,7 +36,7 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 				e.Direction = elevio.MD_Stop
 				e.Behaviour = elevio.EB_DoorOpen
 				elevio.SetDoorOpenLamp(true)
-				//Start timer
+				timer.StartTimer(e.DoorOpenDuration)
 			}
 			break
 		default:
@@ -72,7 +75,7 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 	switch e.Behaviour {
 		case elevio.EB_DoorOpen:
 			if requests.ReqestShouldClearImmideatly(e, b.Floor, b.Button) {
-				//Reset timer
+				timer.StartTimer(e.DoorOpenDuration)
 			} else {
 				e = elevio.AddToQueue(b.Button, b.Floor, e)
 			}
@@ -89,7 +92,7 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 					break
 				case elevio.EB_DoorOpen:
 					elevio.SetDoorOpenLamp(true)
-					//Start timer
+					timer.StartTimer(e.DoorOpenDuration)
 					e = requests.RequestClearAtCurrentFloor(e)
 					break
 				case elevio.EB_Idle:
@@ -130,6 +133,10 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obst
 		case a := <-drv_stop:
 			fmt.Println("Stopped has been pressed", a)
 
+		}
+		if timer.TimerTimeOut() {
+			timer.StopTimer()
+			FSM_doorTimeOut()
 		}
 	}
 

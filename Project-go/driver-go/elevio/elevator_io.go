@@ -51,7 +51,7 @@ type Elevator struct {
 	CurrentFloor int
 	Direction    MotorDirection
 	Behaviour    ElevatorBehaviour
-	Requests     []ButtonEvent
+	Requests     [4][3]int
 	NumFloors  int
 }
 
@@ -91,49 +91,23 @@ func SetStopLamp(value bool) {
 	write([4]byte{5, toByte(value), 0, 0})
 }
 
-func LightButtons(b []ButtonEvent, numFloors int) {
-	for a := 0; a < numFloors; a++ {
+func LightButtons(e Elevator) {
+	for a := 0; a < e.NumFloors; a++ {
 		for i := ButtonType(0); i < 3; i++ {
-			if contains(b, ButtonEvent{a, i}) {
+			if e.Requests[a][i] == 1 {
 				SetButtonLamp(i, a, true)
 			} else {
 				SetButtonLamp(i, a, false)
-
 			}
 		}
 	}
 }
 
-func contains(s []ButtonEvent, e ButtonEvent) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
+func AddToQueue(button ButtonType, floor int, e Elevator) Elevator {
+	e.Requests[floor][button] = 1
+	return e
 }
 
-func AddToQueue(button ButtonType, floor int, b []ButtonEvent) []ButtonEvent {
-	if contains(b, ButtonEvent{floor, button}) {
-		return b
-	}
-	b = append(b, ButtonEvent{floor, button})
-	fmt.Printf("Appending Floor %d\n", b)
-	return b
-}
-
-func RemoveFromQueue(floor int, d MotorDirection, b []ButtonEvent) []ButtonEvent {
-	for i, a := range b {
-		if a.Floor == floor {
-			fmt.Printf("Removing Floor\n")
-			b = append(b[:i], b[i+1:]...)
-			break
-		}
-	}
-	return b
-}
-
-// && (a.Button == BT_Cab || d == MD_Stop || (d == MD_Up && a.Button == BT_HallUp) || (d == MD_Down && a.Button == BT_HallDown)) {
 func PollButtons(receiver chan<- ButtonEvent) {
 	prev := make([][3]bool, _numFloors)
 	for {

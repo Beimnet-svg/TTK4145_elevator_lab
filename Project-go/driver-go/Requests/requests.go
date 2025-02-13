@@ -26,34 +26,33 @@ func RequestShouldStop(e elevio.Elevator) bool {
 
 // Helper function to check if there's a request at the current floor
 func hasRequestAtFloor(e elevio.Elevator, btnType elevio.ButtonType) bool {
-	for _, req := range e.Requests {
-		if req.Floor == e.CurrentFloor && req.Button == btnType {
-			return true
-		}
-	}
-	return false
+	return e.Requests[e.CurrentFloor][btnType] != 0
 }
 
-// Placeholder functions: You should implement requestsAbove(e) and requestsBelow(e)
 func requestsAbove(e elevio.Elevator) bool {
-	// Iterate through `e.Requests` to check if there's any request above `e.CurrentFloor`
-	for _, req := range e.Requests {
-		if req.Floor > e.CurrentFloor {
-			return true
+	// Iterate from floor `e.CurrentFloor` to the top floor to check if there's any request above `e.CurrentFloor`
+	for a := e.CurrentFloor + 1; a < e.NumFloors; a++ {
+		for i := elevio.ButtonType(0); i < 3; i++ {
+			if e.Requests[a][i] != 0 {
+				return true
+			}
 		}
 	}
 	return false
 }
 
 func requestsBelow(e elevio.Elevator) bool {
-	// Iterate through `e.Requests` to check if there's any request below `e.CurrentFloor`
-	for _, req := range e.Requests {
-		if req.Floor < e.CurrentFloor {
-			return true
+	// Iterate from floor 0 to `e.CurrentFloor` to check if there's any request below `e.CurrentFloor`
+	for a := 0; a < e.CurrentFloor; a++ {
+		for i := elevio.ButtonType(0); i < 3; i++ {
+			if e.Requests[a][i] != 0 {
+				return true
+			}
 		}
 	}
 	return false
 }
+
 
 func RequestChooseDir(e elevio.Elevator, b elevio.ButtonType) (elevio.MotorDirection, elevio.ElevatorBehaviour) {
 	switch e.Direction {
@@ -104,15 +103,26 @@ func ReqestShouldClearImmideatly(e elevio.Elevator, floor int, b elevio.ButtonTy
 	return false
 }
 
-
-
 func RequestClearAtCurrentFloor(e elevio.Elevator) elevio.Elevator {
-	for i, req := range e.Requests {
-		if req.Floor == e.CurrentFloor && req.Button==elevio.BT_Cab {
-			e.Requests = append(e.Requests[:i], e.Requests[i+1:]...)
+
+	e.Requests[e.CurrentFloor][elevio.BT_Cab] = 0
+	switch e.Direction {
+	case elevio.MD_Up:
+		if (!requestsAbove(e) && e.Requests[e.CurrentFloor][elevio.BT_HallUp] == 0) {
+			e.Requests[e.CurrentFloor][elevio.BT_HallDown] = 0		
+		} else {
+			e.Requests[e.CurrentFloor][elevio.BT_HallUp] = 0
 		}
+	case elevio.MD_Down:
+		if (!requestsBelow(e) && e.Requests[e.CurrentFloor][elevio.BT_HallDown] == 0) {
+			e.Requests[e.CurrentFloor][elevio.BT_HallUp] = 0
+		} else {
+			e.Requests[e.CurrentFloor][elevio.BT_HallDown] = 0
+		}
+	case elevio.MD_Stop:
+		//Should never reach this point
+		break
 	}
 	return e
 	
-
 }

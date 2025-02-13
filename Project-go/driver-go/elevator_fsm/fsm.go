@@ -3,6 +3,7 @@ package elevator_fsm
 import (
 	doors "Driver-go/Doors"
 	elevator_motion "Driver-go/Elevator_Motion"
+	requests "Driver-go/Requests"
 	"Driver-go/elevio"
 	"fmt"
 )
@@ -13,7 +14,7 @@ var (
 		CurrentFloor: 0,
 		Direction:    elevio.MD_Stop,
 		Behaviour:    elevio.EB_Idle,
-		Requests:     []elevio.ButtonEvent{},
+		Requests:     [4][3]int{},
 		NumFloors:    4,
 	}
 )
@@ -22,47 +23,21 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 
 	elevio.SetFloorIndicator(floor)
 	e.CurrentFloor = floor
-	fmt.Printf("Her")
-	e.Direction = elevator_motion.SetDirection(e.CurrentFloor, e.Requests[0].Floor, e.Direction)
-	elevio.SetMotorDirection(e.Direction)
 
-	fmt.Printf("%+v\n", floor)
-	e.Direction = elevator_motion.SetDirection(e.CurrentFloor, e.Requests[0].Floor, e.Direction)
-	elevio.SetMotorDirection(e.Direction)
+	switch e.Behaviour {
+		case elevio.EB_Moving:
+			if requests.RequestShouldStop(e) {
+				elevio.SetMotorDirection(elevio.MD_Stop)
+				e = requests.RequestClearAtCurrentFloor(e)
+				elevio.LightButtons(e)
+				e.Direction = elevio.MD_Stop
+				e.Behaviour = elevio.EB_DoorOpen
+			}
+			break
+		default:
+			break
 
-	if e.Direction == elevio.MD_Stop {
-		e.Requests = doors.OpenDoor(e.CurrentFloor, e.Requests, e.NumFloors, drv_button)
-		e.Requests = elevio.RemoveFromQueue(e.CurrentFloor, e.Direction, e.Requests)
-		elevio.LightButtons(e.Requests, e.NumFloors)
-		if len(e.Requests) != 0 {
-			e.Direction = elevator_motion.SetDirection(e.CurrentFloor, e.Requests[0].Floor, e.Direction)
-			elevio.SetMotorDirection(e.Direction)
-		}
-
-	}
-
-	// elevio.SetFloorIndicator(floor)
-	// e.CurrentFloor = floor
-	// fmt.Printf("Her")
-	// e.Direction = elevator_motion.SetDirection(e.CurrentFloor, e.Requests[0].Floor, e.Direction)
-	// elevio.SetMotorDirection(e.Direction)
-	// e.Behaviour=elevio.EB_Moving
-
-	// switch e.Behaviour {
-	// case elevio.EB_Moving:
-	// 	if(requests.RequestShouldStop(*e)){
-	// 		elevio.SetMotorDirection(elevio.MD_Stop)
-	// 		elevio.SetDoorOpenLamp(true)
-	// 		e.Requests=doors.OpenDoor(e.CurrentFloor, e.Requests, 4, DRV_buttons)
-	// 		e.Behaviour = elevio.EB_DoorOpen
-	// 		e.Direction = elevio.MD_Stop
-	// 		e.Requests = elevio.RemoveFromQueue(e.CurrentFloor, e.Direction, e.Requests)
-	// 		}
-	// 		break
-	// 	default:
-	// 		break
-
-	// }
+	}	
 
 }
 func init_elevator(drv_floors chan int) {
@@ -94,11 +69,9 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 
 	fmt.Printf("%+v\n", b)
 
-	e.Requests = elevio.AddToQueue(b.Button, b.Floor, e.Requests)
-	elevio.LightButtons(e.Requests, e.NumFloors)
-	e.Direction = elevator_motion.SetDirection(e.CurrentFloor, e.Requests[0].Floor, e.Direction)
-	elevio.SetMotorDirection(e.Direction)
-	e.Behaviour = elevio.EB_Moving
+	e = elevio.AddToQueue(b.Button, b.Floor, e)
+	elevio.LightButtons(e)
+	
 }
 
 func FSM_doorTimeOut() {

@@ -6,7 +6,6 @@ import (
 	requests "Driver-go/Requests"
 	timer "Driver-go/Timer"
 	"Driver-go/elevio"
-	"Timer/timer"
 	"fmt"
 )
 

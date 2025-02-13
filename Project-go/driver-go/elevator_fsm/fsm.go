@@ -32,6 +32,8 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 				elevio.LightButtons(e)
 				e.Direction = elevio.MD_Stop
 				e.Behaviour = elevio.EB_DoorOpen
+				elevio.SetDoorOpenLamp(true)
+				//Start timer
 			}
 			break
 		default:
@@ -67,9 +69,35 @@ func init_elevator(drv_floors chan int) {
 
 func FSM_onButtonPress(b elevio.ButtonEvent) {
 
-	fmt.Printf("%+v\n", b)
+	switch e.Behaviour {
+		case elevio.EB_DoorOpen:
+			if requests.ReqestShouldClearImmideatly(e, b.Floor, b.Button) {
+				//Reset timer
+			} else {
+				e = elevio.AddToQueue(b.Button, b.Floor, e)
+			}
 
-	e = elevio.AddToQueue(b.Button, b.Floor, e)
+		case elevio.EB_Moving:
+			e = elevio.AddToQueue(b.Button, b.Floor, e)
+			break
+		case elevio.EB_Idle:
+			e = elevio.AddToQueue(b.Button, b.Floor, e)
+			e.Direction, e.Behaviour = requests.RequestChooseDir(e, b.Button)
+			switch e.Behaviour {
+				case elevio.EB_Moving:
+					elevio.SetMotorDirection(e.Direction)
+					break
+				case elevio.EB_DoorOpen:
+					elevio.SetDoorOpenLamp(true)
+					//Start timer
+					e = requests.RequestClearAtCurrentFloor(e)
+					break
+				case elevio.EB_Idle:
+					break
+		
+			}
+	}
+
 	elevio.LightButtons(e)
 	
 }

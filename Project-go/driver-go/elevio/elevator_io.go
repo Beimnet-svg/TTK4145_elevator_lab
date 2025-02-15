@@ -16,12 +16,10 @@ var _conn net.Conn
 
 type MotorDirection int
 
-
 const (
 	MD_Up   MotorDirection = 1
 	MD_Down                = -1
 	MD_Stop                = 0
-
 )
 
 type ButtonType int
@@ -35,9 +33,9 @@ const (
 type ElevatorBehaviour int
 
 const (
-	EB_Idle ElevatorBehaviour = 0
-	EB_Moving =1
-	EB_DoorOpen = 2
+	EB_Idle     ElevatorBehaviour = 0
+	EB_Moving                     = 1
+	EB_DoorOpen                   = 2
 )
 
 type ButtonEvent struct {
@@ -45,14 +43,12 @@ type ButtonEvent struct {
 	Button ButtonType
 }
 
-
-
 type Elevator struct {
-	CurrentFloor int
-	Direction    MotorDirection
-	Behaviour    ElevatorBehaviour
-	Requests     [4][3]int
-	NumFloors  int
+	CurrentFloor     int
+	Direction        MotorDirection
+	Behaviour        ElevatorBehaviour
+	Requests         [4][3]int
+	NumFloors        int
 	DoorOpenDuration int
 }
 
@@ -94,7 +90,7 @@ func SetStopLamp(value bool) {
 
 func LightButtons(e Elevator) {
 	for a := 0; a < e.NumFloors; a++ {
-		for i := ButtonType(0); i < 3; i++ {
+		for i := ButtonType(0); i <= ButtonType(2); i++ {
 			if e.Requests[a][i] == 1 {
 				SetButtonLamp(i, a, true)
 			} else {

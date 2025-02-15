@@ -1,6 +1,8 @@
 package timer
 
-import "time"
+import (
+	"time"
+)
 
 var _timerEndTime int
 var _timerActive bool
@@ -16,5 +18,16 @@ func StopTimer() {
 
 func TimerTimeOut() bool {
 	return _timerActive && (time.Now().Second() >= _timerEndTime)
-	
+
+}
+
+func PollTimer(receiver chan bool) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			receiver <- TimerTimeOut()
+		}
+	}
 }

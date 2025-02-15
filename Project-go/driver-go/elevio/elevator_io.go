@@ -53,6 +53,7 @@ type Elevator struct {
 	Behaviour    ElevatorBehaviour
 	Requests     [4][3]int
 	NumFloors  int
+	DoorOpenDuration int
 }
 
 func Init(addr string, numFloors int) {

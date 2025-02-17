@@ -1,7 +1,7 @@
 package requests
 
 import (
-	"Driver-go/elevio"
+	"Project-go/driver-go/elevio"
 )
 
 func RequestShouldStop(e elevio.Elevator) bool {

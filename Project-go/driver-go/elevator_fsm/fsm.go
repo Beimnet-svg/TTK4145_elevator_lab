@@ -1,9 +1,9 @@
 package elevator_fsm
 
 import (
-	requests "Driver-go/Requests"
-	timer "Driver-go/Timer"
-	"Driver-go/elevio"
+	requests "Project-go/driver-go/Requests"
+	timer "Project-go/driver-go/Timer"
+	"Project-go/driver-go/elevio"
 	"fmt"
 )
 
@@ -70,7 +70,7 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 
 	switch e.Behaviour {
 	case elevio.EB_DoorOpen:
-		
+
 		if requests.ReqestShouldClearImmideatly(e, b.Floor, b.Button) {
 			timer.StartTimer(e.DoorOpenDuration)
 

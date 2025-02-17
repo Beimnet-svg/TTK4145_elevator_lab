@@ -1,10 +1,11 @@
 package main
 
 import (
-	timer "Driver-go/Timer"
-	"Driver-go/elevator_fsm"
+	networking "Project-go/Networking"
+	timer "Project-go/driver-go/Timer"
+	"Project-go/driver-go/elevator_fsm"
 
-	"Driver-go/elevio"
+	"Project-go/driver-go/elevio"
 )
 
 var numFloors = 4
@@ -31,9 +32,10 @@ func main() {
 	//1. test if door is closed before running
 
 	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr, drv_stop, doorTimer)
+	go networking.Main_Networking()
 
 	for {
-		//Implement ex 4 in here
+		//Send alive message (Elevator nr + Slave or not)
 	}
 
 }

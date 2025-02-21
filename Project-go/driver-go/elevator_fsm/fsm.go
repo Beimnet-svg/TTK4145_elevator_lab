@@ -16,6 +16,7 @@ var (
 		Requests:         [4][3]int{},
 		NumFloors:        4,
 		DoorOpenDuration: 3,
+		Obstruction:      false,
 	}
 )
 
@@ -105,13 +106,18 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 
 func FSM_doorTimeOut() {
 
+	if e.Obstruction && e.Behaviour == elevio.EB_DoorOpen {
+		fmt.Println("Door timeout triggered but obstruction is active; keeping door open.")
+		timer.StartTimer(e.DoorOpenDuration)
+		return
+	}
+
 	switch e.Behaviour {
 	case elevio.EB_DoorOpen:
 		e.Direction, e.Behaviour = requests.RequestChooseDir(e)
 
 		switch e.Behaviour {
 		case elevio.EB_DoorOpen:
-			fmt.Print("Door is stuck in Eb_dooropen\n")
 
 			timer.StartTimer(e.DoorOpenDuration)
 			e = requests.RequestClearAtCurrentFloor(e)
@@ -140,6 +146,21 @@ func FSM_doorTimeOut() {
 	}
 
 }
+func FSM_Obstruction(obstruction bool) {
+	e.Obstruction = obstruction
+
+	// If the door is open and an obstruction occurs, restart the timer.
+	if e.Behaviour == elevio.EB_DoorOpen {
+		if obstruction {
+			fmt.Println("Obstruction detected while door is open. Keeping door open.")
+			timer.StartTimer(e.DoorOpenDuration)
+			elevio.SetDoorOpenLamp(true)
+		} else {
+			fmt.Println("Obstruction cleared while door is open.")
+		}
+	}
+	// When the door is closed, we don't need to do anything.
+}
 
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool) {
 	fmt.Println("here")
@@ -155,12 +176,7 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obst
 			FSM_onFloorArrival(a, drv_buttons)
 
 		case a := <-drv_obstr:
-			fmt.Printf("%+v\n", a)
-			if a && e.Behaviour == elevio.EB_DoorOpen {
-				elevio.SetMotorDirection(elevio.MD_Stop)
-			} else {
-				elevio.SetMotorDirection(e.Direction)
-			}
+			FSM_Obstruction(a)
 
 		case a := <-drv_stop:
 			fmt.Println("Stopped has been pressed", a)

@@ -50,6 +50,7 @@ type Elevator struct {
 	Requests         [4][3]int
 	NumFloors        int
 	DoorOpenDuration int
+	Obstruction 	bool
 }
 
 func Init(addr string, numFloors int) {

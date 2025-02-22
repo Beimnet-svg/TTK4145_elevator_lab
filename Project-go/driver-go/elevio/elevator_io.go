@@ -48,10 +48,11 @@ type Elevator struct {
 	Direction        MotorDirection
 	Behaviour        ElevatorBehaviour
 	Requests         [4][3]int
+	ActiveOrders	 [4][3]int
 	NumFloors        int
 	DoorOpenDuration int
 	ElevatorID       int
-	Master           int
+	Master           bool
 }
 
 func Init(addr string, numFloors int) {

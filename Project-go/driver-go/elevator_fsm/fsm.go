@@ -1,6 +1,7 @@
 package elevator_fsm
 
 import (
+	networking "Project-go/Networking"
 	requests "Project-go/driver-go/Requests"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevio"
@@ -14,10 +15,14 @@ var (
 		Direction:        elevio.MD_Up,
 		Behaviour:        elevio.EB_Idle,
 		Requests:         [4][3]int{},
+		ActiveOrders:     [4][3]int{},
 		NumFloors:        4,
 		DoorOpenDuration: 3,
+		Master:           true,
 	}
 )
+
+var allActiveOrders [4][3][3]int
 
 func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 
@@ -28,8 +33,6 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 	case elevio.EB_Moving:
 		if requests.RequestShouldStop(e) {
 			elevio.SetMotorDirection(elevio.MD_Stop)
-			e = requests.RequestClearAtCurrentFloor(e)
-			elevio.LightButtons(e)
 			e.Behaviour = elevio.EB_DoorOpen
 			elevio.SetDoorOpenLamp(true)
 			timer.StartTimer(e.DoorOpenDuration)
@@ -41,6 +44,17 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 	}
 
 }
+
+func FSM_onMsgArrived(orders [4][3][3]int) {
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 3; j++ {
+			e.ActiveOrders[i][j] = orders[i][j][e.ElevatorID]
+		}
+	}
+	allActiveOrders = orders
+	elevio.LightButtons(e)
+}
+
 func init_elevator(drv_floors chan int) {
 	for a := 0; a < e.NumFloors; a++ {
 		for i := elevio.ButtonType(0); i < 3; i++ {
@@ -68,38 +82,40 @@ func init_elevator(drv_floors chan int) {
 
 func FSM_onButtonPress(b elevio.ButtonEvent) {
 
-	switch e.Behaviour {
-	case elevio.EB_DoorOpen:
+	e = elevio.AddToQueue(b.Button, b.Floor, e)
 
-		if requests.ReqestShouldClearImmideatly(e, b.Floor, b.Button) {
-			timer.StartTimer(e.DoorOpenDuration)
+	// switch e.Behaviour {
+	// case elevio.EB_DoorOpen:
 
-		} else {
-			e = elevio.AddToQueue(b.Button, b.Floor, e)
-		}
+	// 	if requests.ReqestShouldClearImmideatly(e, b.Floor, b.Button) {
+	// 		timer.StartTimer(e.DoorOpenDuration)
 
-	case elevio.EB_Moving:
-		e = elevio.AddToQueue(b.Button, b.Floor, e)
-		break
-	case elevio.EB_Idle:
-		e = elevio.AddToQueue(b.Button, b.Floor, e)
-		e.Direction, e.Behaviour = requests.RequestChooseDir(e)
-		switch e.Behaviour {
-		case elevio.EB_Moving:
-			elevio.SetMotorDirection(e.Direction)
-			break
-		case elevio.EB_DoorOpen:
-			elevio.SetDoorOpenLamp(true)
-			timer.StartTimer(e.DoorOpenDuration)
-			e = requests.RequestClearAtCurrentFloor(e)
-			break
-		case elevio.EB_Idle:
-			break
+	// 	} else {
+	// 		e = elevio.AddToQueue(b.Button, b.Floor, e)
+	// 	}
 
-		}
-	}
+	// case elevio.EB_Moving:
+	// 	e = elevio.AddToQueue(b.Button, b.Floor, e)
+	// 	break
+	// case elevio.EB_Idle:
+	// 	e = elevio.AddToQueue(b.Button, b.Floor, e)
+	// 	e.Direction, e.Behaviour = requests.RequestChooseDir(e)
+	// 	switch e.Behaviour {
+	// 	case elevio.EB_Moving:
+	// 		elevio.SetMotorDirection(e.Direction)
+	// 		break
+	// 	case elevio.EB_DoorOpen:
+	// 		elevio.SetDoorOpenLamp(true)
+	// 		timer.StartTimer(e.DoorOpenDuration)
+	// 		e = requests.RequestClearAtCurrentFloor(e)
+	// 		break
+	// 	case elevio.EB_Idle:
+	// 		break
 
-	elevio.LightButtons(e)
+	// 	}
+	// }
+
+	// elevio.LightButtons(e)
 
 }
 
@@ -114,8 +130,6 @@ func FSM_doorTimeOut() {
 			fmt.Print("Door is stuck in Eb_dooropen\n")
 
 			timer.StartTimer(e.DoorOpenDuration)
-			e = requests.RequestClearAtCurrentFloor(e)
-			elevio.LightButtons(e)
 			break
 
 		case elevio.EB_Moving:
@@ -141,7 +155,10 @@ func FSM_doorTimeOut() {
 
 }
 
-func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool) {
+func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
+	drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool,
+	msgArrived chan [4][3][3]int) {
+
 	fmt.Println("here")
 	init_elevator(drv_floors)
 
@@ -171,6 +188,31 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obst
 				fmt.Print("After if")
 				timer.StopTimer()
 				FSM_doorTimeOut()
+			}
+		case a := <-msgArrived:
+			FSM_onMsgArrived(a)
+		default:
+			switch e.Master {
+			case false:
+				
+				networking.SenderSlave(e)
+
+			case true:
+				
+				// allActiveOrders = ordermanager.FetchActiveOrders()
+				allActiveOrders = [4][3][3]int{
+					{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+					{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+					{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+					{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+				}
+				for i := 0; i < 4; i++ {
+					for j := 0; j < 3; j++ {
+						e.ActiveOrders[i][j] = allActiveOrders[i][j][e.ElevatorID]
+					}
+				}
+
+				networking.SenderMaster(e, allActiveOrders)
 			}
 
 		}

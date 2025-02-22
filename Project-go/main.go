@@ -16,6 +16,7 @@ var drv_obstr = make(chan bool)
 var drv_stop = make(chan bool)
 
 var doorTimer = make(chan bool)
+var msgArrived = make(chan [4][3][3]int)
 
 func main() {
 
@@ -26,13 +27,14 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 	go timer.PollTimer(doorTimer)
+	go networking.Receiver(msgArrived)
 
 	//Networking go routine
 	//Acceptence tests
 	//1. test if door is closed before running
 
-	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr, drv_stop, doorTimer)
-	go networking.Main_Networking()
+	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr,
+		drv_stop, doorTimer, msgArrived)
 
 	for {
 		//Send alive message (Elevator nr + Slave or not)

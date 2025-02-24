@@ -18,6 +18,7 @@ var (
 		ActiveOrders:     [4][3]int{},
 		NumFloors:        4,
 		DoorOpenDuration: 3,
+		ElevatorID:       0,
 		Master:           true,
 	}
 )
@@ -52,6 +53,24 @@ func FSM_onMsgArrived(orders [4][3][3]int) {
 		}
 	}
 	allActiveOrders = orders
+	switch e.Behaviour {
+	case elevio.EB_Idle:
+		e.Direction, e.Behaviour = requests.RequestChooseDir(e)
+		switch e.Behaviour {
+		case elevio.EB_Moving:
+			elevio.SetMotorDirection(e.Direction)
+			break
+		case elevio.EB_DoorOpen:
+			elevio.SetDoorOpenLamp(true)
+			timer.StartTimer(e.DoorOpenDuration)
+			e = requests.RequestClearAtCurrentFloor(e)
+			break
+		case elevio.EB_Idle:
+			break
+		}
+	default:
+		break
+	}
 	elevio.LightButtons(e)
 }
 
@@ -190,21 +209,24 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 				FSM_doorTimeOut()
 			}
 		case a := <-msgArrived:
+			//Add ignore messages on same IP
+			fmt.Println("At message arrived: \n", a)
 			FSM_onMsgArrived(a)
 		default:
 			switch e.Master {
 			case false:
-				
+
 				networking.SenderSlave(e)
 
 			case true:
-				
+
 				// allActiveOrders = ordermanager.FetchActiveOrders()
+				//The inner loop is button type, then floors as rows, and elevators as columns
 				allActiveOrders = [4][3][3]int{
+					{{1, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+					{{0, 1, 0}, {0, 0, 0}, {0, 0, 0}},
 					{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-					{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-					{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-					{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+					{{1, 0, 0}, {0, 0, 0}, {0, 0, 0}},
 				}
 				for i := 0; i < 4; i++ {
 					for j := 0; j < 3; j++ {

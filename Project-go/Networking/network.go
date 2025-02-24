@@ -64,6 +64,7 @@ func Receiver(receiver chan [4][3][3]int) {
 		if err != nil {
 			log.Fatal("Error decoding message:", err)
 		}
+		fmt.Println("msg in Reciever: \n", msg)
 
 		// Process the received message
 		if msg.Slave != nil {

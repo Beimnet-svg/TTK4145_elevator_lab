@@ -108,29 +108,29 @@ func ReqestShouldClearImmideatly(e elevio.Elevator, floor int, b elevio.ButtonTy
 	return false
 }
 
-func RequestClearAtCurrentFloor(e elevio.Elevator) elevio.Elevator {
+func RequestClearAtCurrentFloor(e elevio.Elevator, AllActiveOrders [3][4][3]bool) [3][4][3]bool {
 	if e.Behaviour == elevio.EB_DoorOpen {
-		e.ActiveOrders[e.CurrentFloor][elevio.BT_Cab] = false
+		AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_Cab] = false
 		switch e.Direction {
 		case elevio.MD_Up:
-			if !(!requestsAbove(e) && e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp]) {
-				e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] = false
+			if !(!requestsAbove(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]) {
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
 			} else {
-				e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] = false
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
 			}
 		case elevio.MD_Down:
-			if !(!requestsBelow(e) && e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown]) {
-				e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] = false
+			if !(!requestsBelow(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]) {
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
 			} else {
-				e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] = false
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
 			}
 		case elevio.MD_Stop:
-			e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] = false
-			e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] = false
-			break
+		default:
+			AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+			AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
 		}
 	}
 
-	return e
+	return AllActiveOrders
 
 }

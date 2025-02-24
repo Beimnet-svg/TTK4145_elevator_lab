@@ -16,7 +16,7 @@ var drv_obstr = make(chan bool)
 var drv_stop = make(chan bool)
 
 var doorTimer = make(chan bool)
-var msgArrived = make(chan [4][3][3]bool)
+var msgArrived = make(chan [3][4][3]bool)
 
 func main() {
 
@@ -28,6 +28,7 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 	go timer.PollTimer(doorTimer)
 	go networking.Receiver(msgArrived)
+	
 
 	//Networking go routine
 	//Acceptence tests

@@ -1,7 +1,13 @@
 package masterslavedist
 
-func AliveRecieved(elevID int, master bool){
+import "Project-go/driver-go/elevio"
 
+func AliveRecieved(elevID int, master bool) {
+
+}
+
+func FetchElevators() []elevio.Elevator {
+	return []elevio.Elevator{}
 }
 
 //Timer module to check if something dies

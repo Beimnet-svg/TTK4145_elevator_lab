@@ -1,19 +1,21 @@
 package ordermanager
 
 import (
+	masterslavedist "Project-go/MasterSlaveDist"
 	requests "Project-go/driver-go/Requests"
 	"Project-go/driver-go/elevio"
 	"encoding/json"
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strconv"
 )
 
 var (
-	AllActiveOrders [4][3][3]bool
-	NewRequests     [4][3][3]bool
+	//Fix config here
+	AllActiveOrders [3][4][3]bool
+	NewRequests     [3][4][3]bool
 	orderCounter    [3]int
-	elevators       [3]elevio.Elevator
 )
 
 var motorDirectionToString = map[elevio.MotorDirection]string{
@@ -40,76 +42,72 @@ type HRAInput struct {
 	States       map[string]HRAElevState `json:"states"`
 }
 
-func RecievedOrdersSlave(e elevio.Elevator) {
-
-	e = requests.RequestClearAtCurrentFloor(e)
-	elevators[e.ElevatorID] = e
+func UpdateOrders(e elevio.Elevator, receiver chan [3][4][3]bool) {
+	//Clear orders at current floor based on elevator state
+	AllActiveOrders = requests.RequestClearAtCurrentFloor(e, AllActiveOrders)
+	//Fetch active elevators from master-slave module
+	elevators := masterslavedist.FetchElevators()
 
 	maxCounterValue := orderCounter[e.ElevatorID]
 	for i := 0; i < e.NumFloors; i++ {
 		for j := 0; j < 3; j++ {
+			//Based on the counter values in e.Requests we can determine if we have a new order
 			if e.Requests[i][j] > orderCounter[e.ElevatorID] {
 				NewRequests[i][j][e.ElevatorID] = true
 				if e.Requests[i][j] > maxCounterValue {
+					//Find the highest counter value in the elevator
 					maxCounterValue = e.Requests[i][j]
 				}
 			}
 		}
 	}
-	orderCounter[e.ElevatorID] = maxCounterValue
 
-	input := formatRequests(elevators, AllActiveOrders, NewRequests)
+	//If we have a new order we redistribute hall orders and set new order counter
+	if maxCounterValue > orderCounter[e.ElevatorID] {
+		orderCounter[e.ElevatorID] = maxCounterValue
+		input := formatInput(elevators, AllActiveOrders, NewRequests)
+		AllActiveOrders = assignRequests(input)
+		receiver <- AllActiveOrders
+	}
 
-	AllActiveOrders = requestAssigner(input)
 }
 
-func formatRequests(elevators [3]elevio.Elevator, allActiveOrders [4][3][3]bool,
-	newRequests [4][3][3]bool) HRAInput {
-	h := [][2]bool{}
-	c1 := []bool{}
-	c2 := []bool{}
-	c3 := []bool{}
+func formatInput(elevators []elevio.Elevator, allActiveOrders [3][4][3]bool,
+	newRequests [3][4][3]bool) HRAInput {
+	hallRequests := [][2]bool{}
+	cabRequests := [3][]bool{}
 
-	for i := 0; i < elevators[0].NumFloors; i++ {
-		for j := 0; j < 2; j++ {
-			for k := 0; k < 3; k++ {
-				h[i][j] = h[i][j] || allActiveOrders[i][j][k] || newRequests[i][j][k]
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 4; j++ {
+			for k := 0; k < 2; k++ {
+				//Extract hallrequests from current and new orders
+				hallRequests[j][k] = hallRequests[j][k] || allActiveOrders[i][j][k] || newRequests[i][j][k]
 			}
 		}
-
-		c1[i] = allActiveOrders[i][2][0] || newRequests[i][2][0]
-		c2[i] = allActiveOrders[i][2][1] || newRequests[i][2][1]
-		c3[i] = allActiveOrders[i][2][2] || newRequests[i][2][2]
+		for j := 0; j < 4; j++ {
+			//Extract cabrequests from current and new orders
+			cabRequests[i][j] = allActiveOrders[i][j][2] || newRequests[i][j][2]
+		}
 
 	}
 
 	input := HRAInput{
-		HallRequests: h,
-		States: map[string]HRAElevState{
-			"one": HRAElevState{
-				Behavior:    behaviorToString[elevators[0].Behaviour],
-				Floor:       elevators[0].CurrentFloor,
-				Direction:   motorDirectionToString[elevators[0].Direction],
-				CabRequests: c1,
-			},
-			"two": HRAElevState{
-				Behavior:    behaviorToString[elevators[1].Behaviour],
-				Floor:       elevators[1].CurrentFloor,
-				Direction:   motorDirectionToString[elevators[1].Direction],
-				CabRequests: c2,
-			},
-			"three": HRAElevState{
-				Behavior:    behaviorToString[elevators[2].Behaviour],
-				Floor:       elevators[2].CurrentFloor,
-				Direction:   motorDirectionToString[elevators[2].Direction],
-				CabRequests: c3,
-			},
-		},
+		HallRequests: hallRequests,
+		States:       map[string]HRAElevState{},
+	}
+
+	for _, e := range elevators {
+		input.States[strconv.Itoa(e.ElevatorID)] = HRAElevState{
+			Behavior:    behaviorToString[e.Behaviour],
+			Floor:       e.CurrentFloor,
+			Direction:   motorDirectionToString[e.Direction],
+			CabRequests: cabRequests[e.ElevatorID][:],
+		}
 	}
 	return input
 }
 
-func requestAssigner(input HRAInput) [4][3][3]bool {
+func assignRequests(input HRAInput) [3][4][3]bool {
 
 	hraExecutable := ""
 	switch runtime.GOOS {
@@ -132,36 +130,34 @@ func requestAssigner(input HRAInput) [4][3][3]bool {
 		fmt.Println(string(ret))
 	}
 
-	output := new(map[string][][2]bool)
-	err = json.Unmarshal(ret, &output)
+	return transformOutput(ret, input)
+
+}
+
+func transformOutput(ret []byte, input HRAInput) [3][4][3]bool {
+
+	tempOutput := new(map[string][][2]bool)
+	newAllActiveOrders := [3][4][3]bool{}
+	err := json.Unmarshal(ret, &tempOutput)
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)
 	}
 
-	fmt.Printf("output: \n")
-	for k, v := range *output {
-		fmt.Printf("%6v :  %+v\n", k, v)
-	}
-
-	var newAllActiveOrders [4][3][3]bool
-
-	// Map the output back to the [4][3][3]bool format
-	//Plz fix someone
-	for floor := 0; floor < 4; floor++ {
-		for button := 0; button < 3; button++ {
-			for elev := 0; elev < 3; elev++ {
-				if button < 2 {
-					newAllActiveOrders[floor][button][elev] = (*output)[fmt.Sprintf("%d-%d", floor, button)][elev]
-				} else {
-					newAllActiveOrders[floor][button][elev] = (*output)[fmt.Sprintf("%d-%d", floor, button)][0]
-				}
+	for ID, orders := range *tempOutput {
+		elevatorID, _ := strconv.Atoi(ID)
+		for i := 0; i < 4; i++ {
+			for j := 0; j < 2; j++ {
+				//Add hall orders to set of active orders
+				newAllActiveOrders[i][j][elevatorID] = orders[i][j]
 			}
+			//Add cab orders to set of active orders
+			newAllActiveOrders[elevatorID][i][2] = input.States[ID].CabRequests[i]
+
 		}
+
 	}
 
 	return newAllActiveOrders
-
 }
 
 //Add function here polling on the msgArrived arrived channel, when a new order comes
-//Also don't run everything if no new requests

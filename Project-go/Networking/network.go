@@ -20,7 +20,7 @@ type OrderMessageSlave struct {
 type OrderMessageMaster struct {
 	ElevID int
 	Master bool
-	Orders [4][3][3]bool
+	Orders [3][4][3]bool
 }
 
 type OrderMessage struct {
@@ -42,7 +42,7 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	return &message, err
 }
 
-func Receiver(receiver chan [4][3][3]bool) {
+func Receiver(receiver chan [3][4][3]bool) {
 	// Listen for incoming UDP packets on port 20007
 	conn, err := net.ListenPacket("udp", ":20007")
 	if err != nil {
@@ -68,7 +68,7 @@ func Receiver(receiver chan [4][3][3]bool) {
 
 		// Process the received message
 		if msg.Slave != nil {
-			ordermanager.RecievedOrdersSlave(msg.Slave.e)
+			ordermanager.UpdateOrders(msg.Slave.e, receiver)
 			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master)
 		} else if msg.Master != nil {
 			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master)
@@ -104,7 +104,7 @@ func SenderSlave(e elevio.Elevator) {
 
 }
 
-func SenderMaster(e elevio.Elevator, orders [4][3][3]bool) {
+func SenderMaster(e elevio.Elevator, orders [3][4][3]bool) {
 	//Call this when we want to send a message
 
 	// Create an instance of the struct

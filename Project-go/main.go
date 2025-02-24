@@ -16,7 +16,7 @@ var drv_obstr = make(chan bool)
 var drv_stop = make(chan bool)
 
 var doorTimer = make(chan bool)
-var msgArrived = make(chan [4][3][3]int)
+var msgArrived = make(chan [4][3][3]bool)
 
 func main() {
 

@@ -7,13 +7,13 @@ import (
 func RequestShouldStop(e elevio.Elevator) bool {
 	switch e.Direction {
 	case elevio.MD_Down:
-		if e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] == 1 || !requestsBelow(e) || e.ActiveOrders[e.CurrentFloor][elevio.BT_Cab] == 1 {
+		if e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] || !requestsBelow(e) || e.ActiveOrders[e.CurrentFloor][elevio.BT_Cab] {
 			return true
 		}
 		return false
 
 	case elevio.MD_Up:
-		if e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] == 1 || e.ActiveOrders[e.CurrentFloor][elevio.BT_Cab] == 1 || !requestsAbove(e) {
+		if e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] || e.ActiveOrders[e.CurrentFloor][elevio.BT_Cab] || !requestsAbove(e) {
 			return true
 		}
 		return false
@@ -29,7 +29,7 @@ func RequestShouldStop(e elevio.Elevator) bool {
 // Helper function to check if there's a request at the current floor
 func hasRequestAtFloor(e elevio.Elevator) bool {
 	for btn := 0; btn < 3; btn++ {
-		if e.ActiveOrders[e.CurrentFloor][btn] != 0 {
+		if e.ActiveOrders[e.CurrentFloor][btn] {
 			return true
 		}
 
@@ -41,7 +41,7 @@ func requestsAbove(e elevio.Elevator) bool {
 	// Iterate from floor `e.CurrentFloor` to the top floor to check if there's any request above `e.CurrentFloor`
 	for a := e.CurrentFloor + 1; a < e.NumFloors; a++ {
 		for i := elevio.ButtonType(0); i < 3; i++ {
-			if e.ActiveOrders[a][i] != 0 {
+			if e.ActiveOrders[a][i] {
 				return true
 			}
 		}
@@ -53,7 +53,7 @@ func requestsBelow(e elevio.Elevator) bool {
 	// Iterate from floor 0 to `e.CurrentFloor` to check if there's any request below `e.CurrentFloor`
 	for a := 0; a < e.CurrentFloor; a++ {
 		for i := elevio.ButtonType(0); i < 3; i++ {
-			if e.ActiveOrders[a][i] != 0 {
+			if e.ActiveOrders[a][i] {
 				return true
 			}
 		}
@@ -109,26 +109,28 @@ func ReqestShouldClearImmideatly(e elevio.Elevator, floor int, b elevio.ButtonTy
 }
 
 func RequestClearAtCurrentFloor(e elevio.Elevator) elevio.Elevator {
-
-	e.ActiveOrders[e.CurrentFloor][elevio.BT_Cab] = 0
-	switch e.Direction {
-	case elevio.MD_Up:
-		if !requestsAbove(e) && e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] == 0 {
-			e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] = 0
-		} else {
-			e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] = 0
+	if e.Behaviour == elevio.EB_DoorOpen {
+		e.ActiveOrders[e.CurrentFloor][elevio.BT_Cab] = false
+		switch e.Direction {
+		case elevio.MD_Up:
+			if !(!requestsAbove(e) && e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp]) {
+				e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] = false
+			} else {
+				e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] = false
+			}
+		case elevio.MD_Down:
+			if !(!requestsBelow(e) && e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown]) {
+				e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] = false
+			} else {
+				e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] = false
+			}
+		case elevio.MD_Stop:
+			e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] = false
+			e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] = false
+			break
 		}
-	case elevio.MD_Down:
-		if !requestsBelow(e) && e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] == 0 {
-			e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] = 0
-		} else {
-			e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] = 0
-		}
-	case elevio.MD_Stop:
-		e.ActiveOrders[e.CurrentFloor][elevio.BT_HallUp] = 0
-		e.ActiveOrders[e.CurrentFloor][elevio.BT_HallDown] = 0
-		break
 	}
+
 	return e
 
 }

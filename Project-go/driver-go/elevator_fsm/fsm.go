@@ -15,15 +15,16 @@ var (
 		Direction:        elevio.MD_Up,
 		Behaviour:        elevio.EB_Idle,
 		Requests:         [4][3]int{},
-		ActiveOrders:     [4][3]int{},
+		ActiveOrders:     [4][3]bool{},
 		NumFloors:        4,
 		DoorOpenDuration: 3,
 		ElevatorID:       0,
 		Master:           true,
 	}
+	OrderCounter = 0
 )
 
-var allActiveOrders [4][3][3]int
+var allActiveOrders [4][3][3]bool
 
 func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 
@@ -46,7 +47,7 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 
 }
 
-func FSM_onMsgArrived(orders [4][3][3]int) {
+func FSM_onMsgArrived(orders [4][3][3]bool) {
 	for i := 0; i < 4; i++ {
 		for j := 0; j < 3; j++ {
 			e.ActiveOrders[i][j] = orders[i][j][e.ElevatorID]
@@ -63,7 +64,6 @@ func FSM_onMsgArrived(orders [4][3][3]int) {
 		case elevio.EB_DoorOpen:
 			elevio.SetDoorOpenLamp(true)
 			timer.StartTimer(e.DoorOpenDuration)
-			e = requests.RequestClearAtCurrentFloor(e)
 			break
 		case elevio.EB_Idle:
 			break
@@ -100,42 +100,12 @@ func init_elevator(drv_floors chan int) {
 }
 
 func FSM_onButtonPress(b elevio.ButtonEvent) {
-
-	e = elevio.AddToQueue(b.Button, b.Floor, e)
-
-	// switch e.Behaviour {
-	// case elevio.EB_DoorOpen:
-
-	// 	if requests.ReqestShouldClearImmideatly(e, b.Floor, b.Button) {
-	// 		timer.StartTimer(e.DoorOpenDuration)
-
-	// 	} else {
-	// 		e = elevio.AddToQueue(b.Button, b.Floor, e)
-	// 	}
-
-	// case elevio.EB_Moving:
-	// 	e = elevio.AddToQueue(b.Button, b.Floor, e)
-	// 	break
-	// case elevio.EB_Idle:
-	// 	e = elevio.AddToQueue(b.Button, b.Floor, e)
-	// 	e.Direction, e.Behaviour = requests.RequestChooseDir(e)
-	// 	switch e.Behaviour {
-	// 	case elevio.EB_Moving:
-	// 		elevio.SetMotorDirection(e.Direction)
-	// 		break
-	// 	case elevio.EB_DoorOpen:
-	// 		elevio.SetDoorOpenLamp(true)
-	// 		timer.StartTimer(e.DoorOpenDuration)
-	// 		e = requests.RequestClearAtCurrentFloor(e)
-	// 		break
-	// 	case elevio.EB_Idle:
-	// 		break
-
-	// 	}
-	// }
-
-	// elevio.LightButtons(e)
-
+	if e.Behaviour == elevio.EB_DoorOpen && requests.ReqestShouldClearImmideatly(e, b.Floor, b.Button) {
+		timer.StartTimer(e.DoorOpenDuration)
+	} else {
+		OrderCounter += 1
+		e = elevio.AddToQueue(b.Button, b.Floor, e, OrderCounter)
+	}
 }
 
 func FSM_doorTimeOut() {
@@ -176,7 +146,7 @@ func FSM_doorTimeOut() {
 
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool,
-	msgArrived chan [4][3][3]int) {
+	msgArrived chan [4][3][3]bool) {
 
 	fmt.Println("here")
 	init_elevator(drv_floors)
@@ -219,20 +189,6 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 				networking.SenderSlave(e)
 
 			case true:
-
-				// allActiveOrders = ordermanager.FetchActiveOrders()
-				//The inner loop is button type, then floors as rows, and elevators as columns
-				allActiveOrders = [4][3][3]int{
-					{{1, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-					{{0, 1, 0}, {0, 0, 0}, {0, 0, 0}},
-					{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-					{{1, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-				}
-				for i := 0; i < 4; i++ {
-					for j := 0; j < 3; j++ {
-						e.ActiveOrders[i][j] = allActiveOrders[i][j][e.ElevatorID]
-					}
-				}
 
 				networking.SenderMaster(e, allActiveOrders)
 			}

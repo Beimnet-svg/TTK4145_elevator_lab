@@ -48,7 +48,7 @@ type Elevator struct {
 	Direction        MotorDirection
 	Behaviour        ElevatorBehaviour
 	Requests         [4][3]int
-	ActiveOrders     [4][3]int
+	ActiveOrders     [4][3]bool
 	NumFloors        int
 	DoorOpenDuration int
 	ElevatorID       int
@@ -94,7 +94,7 @@ func SetStopLamp(value bool) {
 func LightButtons(e Elevator) {
 	for a := 0; a < e.NumFloors; a++ {
 		for i := ButtonType(0); i <= ButtonType(2); i++ {
-			if e.ActiveOrders[a][i] == 1 {
+			if e.ActiveOrders[a][i] == true {
 				SetButtonLamp(i, a, true)
 			} else {
 				SetButtonLamp(i, a, false)
@@ -103,8 +103,8 @@ func LightButtons(e Elevator) {
 	}
 }
 
-func AddToQueue(button ButtonType, floor int, e Elevator) Elevator {
-	e.Requests[floor][button] = 1
+func AddToQueue(button ButtonType, floor int, e Elevator, orderCount int) Elevator {
+	e.Requests[floor][button] = orderCount
 	return e
 }
 

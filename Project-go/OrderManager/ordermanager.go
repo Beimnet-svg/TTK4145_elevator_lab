@@ -45,8 +45,6 @@ type HRAInput struct {
 func UpdateOrders(e elevio.Elevator, receiver chan [3][4][3]bool) {
 	//Clear orders at current floor based on elevator state
 	AllActiveOrders = requests.RequestClearAtCurrentFloor(e, AllActiveOrders)
-	//Fetch active elevators from master-slave module
-	elevators := masterslavedist.FetchElevators()
 
 	maxCounterValue := orderCounter[e.ElevatorID]
 	for i := 0; i < e.NumFloors; i++ {
@@ -64,6 +62,8 @@ func UpdateOrders(e elevio.Elevator, receiver chan [3][4][3]bool) {
 
 	//If we have a new order we redistribute hall orders and set new order counter
 	if maxCounterValue > orderCounter[e.ElevatorID] {
+		//Fetch active elevators from master-slave module
+		elevators := masterslavedist.FetchElevators()
 		orderCounter[e.ElevatorID] = maxCounterValue
 		input := formatInput(elevators, AllActiveOrders, NewRequests)
 		AllActiveOrders = assignRequests(input)
@@ -124,7 +124,7 @@ func assignRequests(input HRAInput) [3][4][3]bool {
 		fmt.Println("json.Marshal error: ", err)
 	}
 
-	ret, err := exec.Command("../hall_request_assigner/"+hraExecutable, "-i", string(jsonBytes)).CombinedOutput()
+	ret, err := exec.Command(hraExecutable, "-i", string(jsonBytes)).CombinedOutput()
 	if err != nil {
 		fmt.Println("exec.Command error: ", err)
 		fmt.Println(string(ret))

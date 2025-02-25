@@ -24,7 +24,7 @@ var (
 	OrderCounter = 0
 )
 
-var allActiveOrders [4][3][3]bool
+var allActiveOrders [3][4][3]bool
 
 func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 
@@ -39,37 +39,33 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 			elevio.SetDoorOpenLamp(true)
 			timer.StartTimer(e.DoorOpenDuration)
 		}
-		break
+
 	default:
-		break
 
 	}
 
 }
 
-func FSM_onMsgArrived(orders [4][3][3]bool) {
-	for i := 0; i < 4; i++ {
-		for j := 0; j < 3; j++ {
-			e.ActiveOrders[i][j] = orders[i][j][e.ElevatorID]
-		}
-	}
+func FSM_onMsgArrived(orders [3][4][3]bool) {
+
+	e.ActiveOrders = orders[e.ElevatorID]
 	allActiveOrders = orders
+
 	switch e.Behaviour {
 	case elevio.EB_Idle:
 		e.Direction, e.Behaviour = requests.RequestChooseDir(e)
 		switch e.Behaviour {
 		case elevio.EB_Moving:
 			elevio.SetMotorDirection(e.Direction)
-			break
+
 		case elevio.EB_DoorOpen:
 			elevio.SetDoorOpenLamp(true)
 			timer.StartTimer(e.DoorOpenDuration)
-			break
+
 		case elevio.EB_Idle:
-			break
 		}
 	default:
-		break
+
 	}
 	elevio.LightButtons(e)
 }
@@ -119,7 +115,6 @@ func FSM_doorTimeOut() {
 			fmt.Print("Door is stuck in Eb_dooropen\n")
 
 			timer.StartTimer(e.DoorOpenDuration)
-			break
 
 		case elevio.EB_Moving:
 			fmt.Print("Door is stuck in Eb_moving1\n")
@@ -128,15 +123,14 @@ func FSM_doorTimeOut() {
 			elevio.SetMotorDirection(e.Direction)
 			fmt.Print("Door is stuck in Eb_moving  2\n")
 
-			break
 		case elevio.EB_Idle:
 			fmt.Print("Door is stuck in Eb_Idle\n")
 
 			elevio.SetDoorOpenLamp(false)
 			elevio.SetMotorDirection(e.Direction)
-			break
+
 		}
-		break
+
 	default:
 		fmt.Print("Door isnt opening for orders\n")
 
@@ -146,7 +140,7 @@ func FSM_doorTimeOut() {
 
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool,
-	msgArrived chan [4][3][3]bool) {
+	msgArrived chan [3][4][3]bool) {
 
 	fmt.Println("here")
 	init_elevator(drv_floors)

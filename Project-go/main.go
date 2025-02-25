@@ -1,6 +1,7 @@
 package main
 
 import (
+	config "Project-go/Config"
 	networking "Project-go/Networking"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevator_fsm"
@@ -8,7 +9,6 @@ import (
 	"Project-go/driver-go/elevio"
 )
 
-var numFloors = 4
 
 var drv_buttons = make(chan elevio.ButtonEvent)
 var drv_floors = make(chan int)
@@ -16,11 +16,11 @@ var drv_obstr = make(chan bool)
 var drv_stop = make(chan bool)
 
 var doorTimer = make(chan bool)
-var msgArrived = make(chan [3][4][3]bool)
+var msgArrived = make(chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool)
 
 func main() {
 
-	elevio.Init("localhost:15657", numFloors)
+	elevio.Init("localhost:15657", config.NumberFloors)
 
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)

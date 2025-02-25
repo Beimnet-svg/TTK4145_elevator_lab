@@ -1,6 +1,7 @@
 package ordermanager
 
 import (
+	config "Project-go/Config"
 	masterslavedist "Project-go/MasterSlaveDist"
 	requests "Project-go/driver-go/Requests"
 	"Project-go/driver-go/elevio"
@@ -13,9 +14,9 @@ import (
 
 var (
 	//Fix config here
-	AllActiveOrders [3][4][3]bool
-	NewRequests     [3][4][3]bool
-	orderCounter    [3]int
+	AllActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
+	NewRequests     [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
+	orderCounter    [config.NumberElev]int
 )
 
 var motorDirectionToString = map[elevio.MotorDirection]string{
@@ -42,7 +43,7 @@ type HRAInput struct {
 	States       map[string]HRAElevState `json:"states"`
 }
 
-func UpdateOrders(e elevio.Elevator, receiver chan [3][4][3]bool) {
+func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	//Clear orders at current floor based on elevator state
 	AllActiveOrders = requests.RequestClearAtCurrentFloor(e, AllActiveOrders)
 
@@ -72,19 +73,19 @@ func UpdateOrders(e elevio.Elevator, receiver chan [3][4][3]bool) {
 
 }
 
-func formatInput(elevators []elevio.Elevator, allActiveOrders [3][4][3]bool,
-	newRequests [3][4][3]bool) HRAInput {
+func formatInput(elevators []elevio.Elevator, allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool,
+	newRequests [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) HRAInput {
 	hallRequests := [][2]bool{}
-	cabRequests := [3][]bool{}
+	cabRequests := [config.NumberElev][]bool{}
 
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 4; j++ {
+	for i := 0; i < config.NumberElev; i++ {
+		for j := 0; j < config.NumberFloors; j++ {
 			for k := 0; k < 2; k++ {
 				//Extract hallrequests from current and new orders
 				hallRequests[j][k] = hallRequests[j][k] || allActiveOrders[i][j][k] || newRequests[i][j][k]
 			}
 		}
-		for j := 0; j < 4; j++ {
+		for j := 0; j < config.NumberFloors; j++ {
 			//Extract cabrequests from current and new orders
 			cabRequests[i][j] = allActiveOrders[i][j][2] || newRequests[i][j][2]
 		}
@@ -107,7 +108,7 @@ func formatInput(elevators []elevio.Elevator, allActiveOrders [3][4][3]bool,
 	return input
 }
 
-func assignRequests(input HRAInput) [3][4][3]bool {
+func assignRequests(input HRAInput) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
 
 	hraExecutable := ""
 	switch runtime.GOOS {
@@ -134,10 +135,10 @@ func assignRequests(input HRAInput) [3][4][3]bool {
 
 }
 
-func transformOutput(ret []byte, input HRAInput) [3][4][3]bool {
+func transformOutput(ret []byte, input HRAInput) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
 
 	tempOutput := new(map[string][][2]bool)
-	newAllActiveOrders := [3][4][3]bool{}
+	newAllActiveOrders := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
 	err := json.Unmarshal(ret, &tempOutput)
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)
@@ -145,7 +146,7 @@ func transformOutput(ret []byte, input HRAInput) [3][4][3]bool {
 
 	for ID, orders := range *tempOutput {
 		elevatorID, _ := strconv.Atoi(ID)
-		for i := 0; i < 4; i++ {
+		for i := 0; i < config.NumberFloors; i++ {
 			for j := 0; j < 2; j++ {
 				//Add hall orders to set of active orders
 				newAllActiveOrders[i][j][elevatorID] = orders[i][j]

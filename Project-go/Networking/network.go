@@ -1,6 +1,7 @@
 package networking
 
 import (
+	config "Project-go/Config"
 	masterslavedist "Project-go/MasterSlaveDist"
 	ordermanager "Project-go/OrderManager"
 	"Project-go/driver-go/elevio"
@@ -20,7 +21,7 @@ type OrderMessageSlave struct {
 type OrderMessageMaster struct {
 	ElevID int
 	Master bool
-	Orders [3][4][3]bool
+	Orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 }
 
 type OrderMessage struct {
@@ -42,7 +43,7 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	return &message, err
 }
 
-func Receiver(receiver chan [3][4][3]bool) {
+func Receiver(receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	// Listen for incoming UDP packets on port 20007
 	conn, err := net.ListenPacket("udp", ":20007")
 	if err != nil {

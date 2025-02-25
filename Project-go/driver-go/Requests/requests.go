@@ -1,6 +1,7 @@
 package requests
 
 import (
+	config "Project-go/Config"
 	"Project-go/driver-go/elevio"
 )
 
@@ -28,7 +29,7 @@ func RequestShouldStop(e elevio.Elevator) bool {
 
 // Helper function to check if there's a request at the current floor
 func hasRequestAtFloor(e elevio.Elevator) bool {
-	for btn := 0; btn < 3; btn++ {
+	for btn := 0; btn < config.NumberBtn; btn++ {
 		if e.ActiveOrders[e.CurrentFloor][btn] {
 			return true
 		}
@@ -40,7 +41,7 @@ func hasRequestAtFloor(e elevio.Elevator) bool {
 func requestsAbove(e elevio.Elevator) bool {
 	// Iterate from floor `e.CurrentFloor` to the top floor to check if there's any request above `e.CurrentFloor`
 	for a := e.CurrentFloor + 1; a < e.NumFloors; a++ {
-		for i := elevio.ButtonType(0); i < 3; i++ {
+		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {
 			if e.ActiveOrders[a][i] {
 				return true
 			}
@@ -52,7 +53,7 @@ func requestsAbove(e elevio.Elevator) bool {
 func requestsBelow(e elevio.Elevator) bool {
 	// Iterate from floor 0 to `e.CurrentFloor` to check if there's any request below `e.CurrentFloor`
 	for a := 0; a < e.CurrentFloor; a++ {
-		for i := elevio.ButtonType(0); i < 3; i++ {
+		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {
 			if e.ActiveOrders[a][i] {
 				return true
 			}

@@ -1,10 +1,14 @@
 package masterslavedist
 
-import "Project-go/driver-go/elevio"
+import (
+	"Project-go/driver-go/elevio"
+)
 
 func AliveRecieved(elevID int, master bool) {
 
 }
+
+
 
 func FetchElevators() []elevio.Elevator {
 	return []elevio.Elevator{}

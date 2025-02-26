@@ -8,6 +8,9 @@ import (
 	"Project-go/driver-go/elevio"
 )
 
+//Hva skal skje:
+//-Hver gang allorders blir updated skal den polle msg arrived i fsm
+//-En annen thread holder styr på I am alive
 var numFloors = 4
 
 var drv_buttons = make(chan elevio.ButtonEvent)
@@ -16,9 +19,12 @@ var drv_obstr = make(chan bool)
 var drv_stop = make(chan bool)
 
 var doorTimer = make(chan bool)
-var msgArrived = make(chan [3][4][3]bool)
+var orderArrived = make(chan [3][4][3]bool)
+var heartbeat = make(chan networking.HeartbeatMessage)
 
 func main() {
+
+	
 
 	elevio.Init("localhost:15657", numFloors)
 
@@ -27,7 +33,9 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 	go timer.PollTimer(doorTimer)
-	go networking.Receiver(msgArrived)
+	go networking.UnifiedReceiver(orderArrived, heartbeat)
+	go networking.HeartBeatSender(elevator_fsm.GetElevator())
+
 	
 
 	//Networking go routine
@@ -35,10 +43,15 @@ func main() {
 	//1. test if door is closed before running
 
 	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr,
-		drv_stop, doorTimer, msgArrived)
+		drv_stop, doorTimer, orderArrived)
+
 
 	for {
-		//Send alive message (Elevator nr + Slave or not)
+		
+			//Reset timer everytime you get a master alive; for slaves  or 
+			//Update which elevators are alive, for master
+			//Update master if master dies.
+		
 	}
 
 }

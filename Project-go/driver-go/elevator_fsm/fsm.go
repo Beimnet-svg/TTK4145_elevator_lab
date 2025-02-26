@@ -1,7 +1,7 @@
 package elevator_fsm
 
 import (
-	networking "Project-go/Networking"
+	ordermanager "Project-go/OrderManager"
 	requests "Project-go/driver-go/Requests"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevio"
@@ -24,7 +24,12 @@ var (
 	OrderCounter = 0
 )
 
+
 var allActiveOrders [3][4][3]bool
+
+func GetElevator() *elevio.Elevator {
+    return &e
+}
 
 func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 
@@ -95,14 +100,20 @@ func init_elevator(drv_floors chan int) {
 
 }
 
-func FSM_onButtonPress(b elevio.ButtonEvent) {
+func FSM_onButtonPress(b elevio.ButtonEvent, orderArrived chan [3][4][3]bool) {
 	if e.Behaviour == elevio.EB_DoorOpen && requests.ReqestShouldClearImmideatly(e, b.Floor, b.Button) {
 		timer.StartTimer(e.DoorOpenDuration)
 	} else {
 		OrderCounter += 1
 		e = elevio.AddToQueue(b.Button, b.Floor, e, OrderCounter)
+
+		// Notify the order manager about the new order
+		go ordermanager.UpdateOrders(e, orderArrived)
 	}
 }
+
+
+
 
 func FSM_doorTimeOut() {
 
@@ -140,7 +151,8 @@ func FSM_doorTimeOut() {
 
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool,
-	msgArrived chan [3][4][3]bool) {
+	orderArrived chan [3][4][3]bool) {
+	
 
 	fmt.Println("here")
 	init_elevator(drv_floors)
@@ -148,7 +160,8 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	for {
 		select {
 		case a := <-drv_buttons:
-			FSM_onButtonPress(a)
+			fmt.Print("In button press\n")
+			FSM_onButtonPress(a, orderArrived)
 
 		case a := <-drv_floors:
 
@@ -172,20 +185,10 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 				timer.StopTimer()
 				FSM_doorTimeOut()
 			}
-		case a := <-msgArrived:
-			//Add ignore messages on same IP
-			fmt.Println("At message arrived: \n", a)
+		case a:=<-orderArrived:
 			FSM_onMsgArrived(a)
-		default:
-			switch e.Master {
-			case false:
-
-				networking.SenderSlave(e)
-
-			case true:
-
-				networking.SenderMaster(e, allActiveOrders)
-			}
+			fmt.Print("Melding ankommet\n")
+	
 
 		}
 

@@ -74,12 +74,20 @@ func UpdateOrders(e elevio.Elevator, receiver chan [3][4][3]bool) {
 
 func formatInput(elevators []elevio.Elevator, allActiveOrders [3][4][3]bool,
 	newRequests [3][4][3]bool) HRAInput {
-	hallRequests := [][2]bool{}
+	
+
+	hallRequests := make([][2]bool, 4) // 4 floors with 2 button types (hall up/down)
+	
+	
 	cabRequests := [3][]bool{}
+	for i := range cabRequests {
+		cabRequests[i] = make([]bool, 4) // 4 floors per elevator
+	}
 
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 4; j++ {
 			for k := 0; k < 2; k++ {
+
 				//Extract hallrequests from current and new orders
 				hallRequests[j][k] = hallRequests[j][k] || allActiveOrders[i][j][k] || newRequests[i][j][k]
 			}
@@ -109,12 +117,13 @@ func formatInput(elevators []elevio.Elevator, allActiveOrders [3][4][3]bool,
 
 func assignRequests(input HRAInput) [3][4][3]bool {
 
-	hraExecutable := ""
+	hraExecutable := "" // Windows & Linux (same directory)
+
 	switch runtime.GOOS {
 	case "linux":
 		hraExecutable = "hall_request_assigner"
 	case "windows":
-		hraExecutable = "hall_request_assigner.exe"
+		hraExecutable = "./hall_request_assigner.exe"
 	default:
 		panic("OS not supported")
 	}
@@ -161,3 +170,18 @@ func transformOutput(ret []byte, input HRAInput) [3][4][3]bool {
 }
 
 //Add function here polling on the msgArrived arrived channel, when a new order comes
+func PollNewOrders(orderChan chan [3][4][3]bool) {
+    for {
+        
+        orders := <-orderChan
+        
+        AllActiveOrders = orders
+        
+        // Process the new orders as needed.
+        // For demonstration, we'll just print the updated orders.
+        fmt.Printf("New order update received: %+v\n", orders)
+        
+        // You might add further processing here, e.g. updating a display
+        // or triggering state transitions in the elevator FSM.
+    }
+}

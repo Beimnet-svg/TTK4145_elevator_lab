@@ -1,7 +1,6 @@
 package networking
 
 import (
-	masterslavedist "Project-go/MasterSlaveDist"
 	ordermanager "Project-go/OrderManager"
 	"Project-go/driver-go/elevio"
 	"bytes"
@@ -9,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 )
 
 type OrderMessageSlave struct {
@@ -42,40 +42,56 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	return &message, err
 }
 
-func Receiver(receiver chan [3][4][3]bool) {
-	// Listen for incoming UDP packets on port 20007
-	conn, err := net.ListenPacket("udp", ":20007")
-	if err != nil {
-		log.Fatal("Error listening on port 20007:", err)
-	}
-	defer conn.Close()
-
-	buffer := make([]byte, 1024)
-
-	for {
-		// Wait for a message to be received
-		n, _, err := conn.ReadFrom(buffer)
-		if err != nil {
-			log.Fatal("Error reading from connection:", err)
-		}
-
-		// Decode the received message
-		msg, err := decodeMessage(buffer[:n])
-		if err != nil {
-			log.Fatal("Error decoding message:", err)
-		}
-		fmt.Println("msg in Reciever: \n", msg)
-
-		// Process the received message
-		if msg.Slave != nil {
-			ordermanager.UpdateOrders(msg.Slave.e, receiver)
-			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master)
-		} else if msg.Master != nil {
-			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master)
-			receiver <- msg.Master.Orders
-		}
-	}
+// Define a heartbeat message structure if needed
+type HeartbeatMessage struct {
+    ElevID int
+    Master bool
 }
+
+func UnifiedReceiver(orderChan chan [3][4][3]bool, heartbeatChan chan HeartbeatMessage) {
+    conn, err := net.ListenPacket("udp", ":20007")
+    if err != nil {
+        log.Fatal("Error listening on port 20007:", err)
+    }
+    defer conn.Close()
+
+    buffer := make([]byte, 1024)
+
+    for {
+        n, _, err := conn.ReadFrom(buffer)
+        if err != nil {
+            log.Println("Error reading from connection:", err)
+            continue
+        }
+
+        msg, err := decodeMessage(buffer[:n])
+        if err != nil {
+            log.Println("Error decoding message:", err)
+            continue
+        }
+
+        // Dispatch based on message type
+        if msg.Slave != nil {
+            // Process orders and heartbeat for a slave message
+            ordermanager.UpdateOrders(msg.Slave.e, orderChan)
+            heartbeatChan <- HeartbeatMessage{
+                ElevID: msg.Slave.ElevID,
+                Master: msg.Slave.Master,
+                // fill in any additional fields if necessary
+            }
+        } else if msg.Master != nil {
+            // Process master message for orders and heartbeat
+            heartbeatChan <- HeartbeatMessage{
+                ElevID: msg.Master.ElevID,
+                Master: msg.Master.Master,
+            }
+            orderChan <- msg.Master.Orders
+        } else {
+            log.Println("Received message with unknown type")
+        }
+    }
+}
+
 func SenderSlave(e elevio.Elevator) {
 	//Call this when we want to send a message
 
@@ -84,7 +100,7 @@ func SenderSlave(e elevio.Elevator) {
 		Slave: &OrderMessageSlave{
 			ElevID: e.ElevatorID,
 			Master: false,
-			e:      e,
+			e: 		e,
 		},
 	}
 
@@ -133,20 +149,49 @@ func SenderMaster(e elevio.Elevator, orders [3][4][3]bool) {
 
 }
 
-/*
-func SenderAlive(e elevio.Elevator) {
+
+func AliveM(e elevio.Elevator) {
 	//Call this when we want to send a message
 
+	// Create an instance of the struct
+	message := OrderMessage{
+		Slave: &OrderMessageSlave{
+			ElevID: e.ElevatorID,
+			Master: false,
+		},
+	}
+
+	// Call this when we want to send a message
 	serverAddr := ":20007"
 	conn, _ := net.Dial("udp", serverAddr)
 	defer conn.Close()
 
-	message := strconv.Itoa(e.ElevatorID) + strconv.Itoa(e.Master)
-	content := []byte(message)
+	var buffer bytes.Buffer
+	enc := gob.NewEncoder(&buffer)
+	err := enc.Encode(message)
+	if err != nil {
+		fmt.Println("Error encoding orders:", err)
+	}
+	content := buffer.Bytes()
 	conn.Write(content)
 
 }
-func SenderStruct(e elevio.Elevator) {
+
+func HeartBeatSender(e *elevio.Elevator){
+	ticker := time.NewTicker(100*time.Millisecond)
+    defer ticker.Stop()
+    for {
+		select {
+		case <-ticker.C:
+        // Send heartbeat based on current state
+        AliveM(*e)
+			
+		}
+        
+    }
+}
+
+func StructM(e elevio.Elevator) {
 	//Call this when we want to send a message
 
 	serverAddr := ":20007"
@@ -212,4 +257,4 @@ func SenderNewOrderSlave(elevID int, orders [4][3][2]int) {
 
 
 }
-*/
+

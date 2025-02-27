@@ -1,6 +1,7 @@
 package elevio
 
 import (
+	config "Project-go/Config"
 	"fmt"
 	"net"
 	"sync"
@@ -10,7 +11,7 @@ import (
 const _pollRate = 20 * time.Millisecond
 
 var _initialized bool = false
-var _numFloors int = 4
+var _numFloors int = config.NumberFloors
 var _mtx sync.Mutex
 var _conn net.Conn
 
@@ -47,8 +48,8 @@ type Elevator struct {
 	CurrentFloor     int
 	Direction        MotorDirection
 	Behaviour        ElevatorBehaviour
-	Requests         [4][3]int
-	ActiveOrders     [4][3]bool
+	Requests         [config.NumberFloors][config.NumberBtn]int
+	ActiveOrders     [config.NumberFloors][config.NumberBtn]bool
 	NumFloors        int
 	DoorOpenDuration int
 	ElevatorID       int
@@ -61,7 +62,6 @@ func Init(addr string, numFloors int) {
 		return
 	}
 
-	_numFloors = numFloors
 	_mtx = sync.Mutex{}
 	var err error
 	_conn, err = net.Dial("tcp", addr)
@@ -113,7 +113,7 @@ func PollButtons(receiver chan<- ButtonEvent) {
 	for {
 		time.Sleep(_pollRate)
 		for f := 0; f < _numFloors; f++ {
-			for b := ButtonType(0); b < 3; b++ {
+			for b := ButtonType(0); b < config.NumberBtn; b++ {
 				v := GetButton(b, f)
 				if v != prev[f][b] && v != false {
 					receiver <- ButtonEvent{f, ButtonType(b)}

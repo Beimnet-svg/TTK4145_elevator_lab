@@ -1,8 +1,8 @@
 package elevator_fsm
 
 import (
+	config "Project-go/Config"
 	networking "Project-go/Networking"
-	"Project-go/config"
 	requests "Project-go/driver-go/Requests"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevio"
@@ -77,7 +77,7 @@ func init_elevator(drv_floors chan int) {
 
 	fmt.Print("ID: ", ID)
 
-	e.ElevatorID, _=strconv.Atoi(ID)
+	e.ElevatorID, _ = strconv.Atoi(ID)
 
 	for a := 0; a < e.NumFloors; a++ {
 		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {

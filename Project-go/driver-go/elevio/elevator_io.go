@@ -1,7 +1,7 @@
 package elevio
 
 import (
-	"Project-go/config"
+	config "Project-go/Config"
 	"fmt"
 	"net"
 	"sync"
@@ -11,7 +11,7 @@ import (
 const _pollRate = 20 * time.Millisecond
 
 var _initialized bool = false
-var _numFloors int = 4
+var _numFloors int = config.NumberFloors
 var _mtx sync.Mutex
 var _conn net.Conn
 
@@ -62,7 +62,6 @@ func Init(addr string, numFloors int) {
 		return
 	}
 
-	_numFloors = numFloors
 	_mtx = sync.Mutex{}
 	var err error
 	_conn, err = net.Dial("tcp", addr)

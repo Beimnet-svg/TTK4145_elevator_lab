@@ -37,7 +37,6 @@ func AliveRecieved(elevID int) bool {
 			if e[i].Master {
 				resetWatchdogTimer()
 			}
-			saveElevatorState(e[i])
 			return true
 		}
 	}
@@ -76,6 +75,8 @@ func detectMultipleMasters(elevator elevio.Elevator) bool {
 	return masterCount > 1
 }
 
+// Watchdog timer working along with the alive message and timer module to
+// check if the master is still alive
 func resetWatchdogTimer() {
 	if watchdogTimer != nil {
 		// Stop the timer because the master is alive
@@ -88,10 +89,6 @@ func resetWatchdogTimer() {
 		fmt.Println("Master is considered dead")
 		ChangeMaster()
 	})
-}
-
-func saveElevatorState(e elevio.Elevator) {
-	fmt.Printf("Saving the state of elevator %d", e.ElevatorID)
 }
 
 // Timer module to check if something dies

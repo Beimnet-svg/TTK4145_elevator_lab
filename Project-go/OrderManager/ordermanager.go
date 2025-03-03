@@ -13,10 +13,10 @@ import (
 )
 
 var (
-	//Fix config here
 	AllActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 	NewRequests     [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 	orderCounter    [config.NumberElev]int
+	ElevState       [config.NumberElev]elevio.Elevator
 )
 
 var motorDirectionToString = map[elevio.MotorDirection]string{
@@ -44,36 +44,48 @@ type HRAInput struct {
 }
 
 func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+	//Update elevator states
+	ElevState[e.ElevatorID] = e
+	
 	//Clear orders at current floor based on elevator state
 	AllActiveOrders = requests.RequestClearAtCurrentFloor(e, AllActiveOrders)
 
+	//Create a maxCounterValue, where every value in e.requests higher than this 
+	//value is considered a new order
 	maxCounterValue := orderCounter[e.ElevatorID]
 
-	for i := 0; i < e.NumFloors; i++ {
-		for j := 0; j < 3; j++ {
-			//Based on the counter values in e.Requests we can determine if we have a new order
-			if e.Requests[i][j] > orderCounter[e.ElevatorID] {
-				NewRequests[i][j][e.ElevatorID] = true
-				if e.Requests[i][j] > maxCounterValue {
-					//Find the highest counter value in the elevator
-					maxCounterValue = e.Requests[i][j]
-				}
-			}
-		}
-	}
-
 	//If we have a new order we redistribute hall orders and set new order counter
-	if maxCounterValue > orderCounter[e.ElevatorID] {
+	if  CheckNewOrders(e, &maxCounterValue) {
 		//Fetch active elevators from master-slave module
-		elevators := masterslavedist.FetchAliveElevators()
+		elevators := masterslavedist.FetchAliveElevators(ElevState)
 		orderCounter[e.ElevatorID] = maxCounterValue
 		input := formatInput(elevators, AllActiveOrders, NewRequests)
 		AllActiveOrders = assignRequests(input)
 	}
 
+	//Send updated orders to all elevators
 	receiver <- AllActiveOrders
-
 }
+
+func CheckNewOrders(e elevio.Elevator, maxCounterValue *int) bool{
+	//Check if there are new orders in the system
+	
+	for i := 0; i < e.NumFloors; i++ {
+		for j := 0; j < 3; j++ {
+			//Based on the counter values in e.Requests we can determine if we have a new order
+			if e.Requests[i][j] > orderCounter[e.ElevatorID] {
+				NewRequests[i][j][e.ElevatorID] = true
+				if e.Requests[i][j] > *maxCounterValue {
+					//Find the highest counter value in the elevator
+					*maxCounterValue = e.Requests[i][j]
+				}
+			}
+		}
+	}
+
+	return *maxCounterValue > orderCounter[e.ElevatorID]
+}
+
 
 func formatInput(elevators []elevio.Elevator, allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool,
 	newRequests [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) HRAInput {

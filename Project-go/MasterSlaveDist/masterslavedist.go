@@ -12,7 +12,6 @@ var (
 	watchdogDuration = config.WatchdogDuration
 	mu               sync.Mutex
 	ActiveElev       [config.NumberElev]bool
-	ActiveElevState  [config.NumberElev]elevio.Elevator
 	localElevID      int
 )
 
@@ -31,14 +30,14 @@ func InitializeMasterSlaveDist(localElev *elevio.Elevator) {
 
 }
 
-func FetchAliveElevators() []elevio.Elevator {
-	AliveElevators := []elevio.Elevator{}
+func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.Elevator {
+	AliveElevatorStates := []elevio.Elevator{}
 	for i := 0; i < len(ActiveElev); i++ {
 		if ActiveElev[i] {
-			AliveElevators = append(AliveElevators, ActiveElevState[i])
+			AliveElevatorStates = append(AliveElevatorStates, ElevState[i])
 		}
 	}
-	return AliveElevators
+	return AliveElevatorStates
 
 }
 
@@ -102,4 +101,3 @@ func ChangeMaster(setMaster chan bool) {
 	}
 
 }
-

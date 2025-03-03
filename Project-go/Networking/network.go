@@ -1,8 +1,10 @@
 package networking
 
 import (
+	config "Project-go/Config"
 	masterslavedist "Project-go/MasterSlaveDist"
 	ordermanager "Project-go/OrderManager"
+	"Project-go/driver-go/elevator_fsm"
 	"Project-go/driver-go/elevio"
 	"bytes"
 	"encoding/gob"
@@ -20,7 +22,7 @@ type OrderMessageSlave struct {
 type OrderMessageMaster struct {
 	ElevID int
 	Master bool
-	Orders [4][3][3]bool
+	Orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 }
 
 type OrderMessage struct {
@@ -42,7 +44,7 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	return &message, err
 }
 
-func Receiver(receiver chan [4][3][3]bool) {
+func Receiver(receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	// Listen for incoming UDP packets on port 20007
 	conn, err := net.ListenPacket("udp", ":20007")
 	if err != nil {
@@ -65,13 +67,14 @@ func Receiver(receiver chan [4][3][3]bool) {
 			log.Fatal("Error decoding message:", err)
 		}
 		fmt.Println("msg in Reciever: \n", msg)
+		localElev := elevator_fsm.GetElevator()
 
 		// Process the received message
 		if msg.Slave != nil {
-			ordermanager.RecievedOrdersSlave(msg.Slave.e)
-			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master)
+			ordermanager.UpdateOrders(msg.Slave.e, receiver)
+			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev)
 		} else if msg.Master != nil {
-			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master)
+			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev)
 			receiver <- msg.Master.Orders
 		}
 	}
@@ -104,7 +107,7 @@ func SenderSlave(e elevio.Elevator) {
 
 }
 
-func SenderMaster(e elevio.Elevator, orders [4][3][3]bool) {
+func SenderMaster(e elevio.Elevator, orders [3][4][3]bool) {
 	//Call this when we want to send a message
 
 	// Create an instance of the struct

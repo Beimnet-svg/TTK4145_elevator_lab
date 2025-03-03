@@ -1,11 +1,14 @@
 package elevator_fsm
 
 import (
+	config "Project-go/Config"
 	networking "Project-go/Networking"
 	requests "Project-go/driver-go/Requests"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevio"
 	"fmt"
+	"os"
+	"strconv"
 )
 
 var (
@@ -14,17 +17,20 @@ var (
 		CurrentFloor:     0,
 		Direction:        elevio.MD_Up,
 		Behaviour:        elevio.EB_Idle,
-		Requests:         [4][3]int{},
-		ActiveOrders:     [4][3]bool{},
-		NumFloors:        4,
-		DoorOpenDuration: 3,
-		ElevatorID:       0,
-		Master:           true,
+		Requests:         [config.NumberFloors][config.NumberBtn]int{},
+		ActiveOrders:     [config.NumberFloors][config.NumberBtn]bool{},
+		NumFloors:        config.NumberFloors,
+		DoorOpenDuration: config.DoorOpenDuration,
+		Master:           false,
 	}
 	OrderCounter = 0
 )
 
-var allActiveOrders [4][3][3]bool
+var allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
+
+func GetElevator() *elevio.Elevator {
+	return &e
+}
 
 func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 
@@ -39,44 +45,46 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 			elevio.SetDoorOpenLamp(true)
 			timer.StartTimer(e.DoorOpenDuration)
 		}
-		break
+
 	default:
-		break
 
 	}
 
 }
 
-func FSM_onMsgArrived(orders [4][3][3]bool) {
-	for i := 0; i < 4; i++ {
-		for j := 0; j < 3; j++ {
-			e.ActiveOrders[i][j] = orders[i][j][e.ElevatorID]
-		}
-	}
+func FSM_onMsgArrived(orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+
+	e.ActiveOrders = orders[e.ElevatorID]
 	allActiveOrders = orders
+
 	switch e.Behaviour {
 	case elevio.EB_Idle:
 		e.Direction, e.Behaviour = requests.RequestChooseDir(e)
 		switch e.Behaviour {
 		case elevio.EB_Moving:
 			elevio.SetMotorDirection(e.Direction)
-			break
+
 		case elevio.EB_DoorOpen:
 			elevio.SetDoorOpenLamp(true)
 			timer.StartTimer(e.DoorOpenDuration)
-			break
+
 		case elevio.EB_Idle:
-			break
 		}
 	default:
-		break
+
 	}
 	elevio.LightButtons(e)
 }
 
 func init_elevator(drv_floors chan int) {
+	ID := os.Args[1]
+
+	fmt.Print("ID: ", ID)
+
+	e.ElevatorID, _ = strconv.Atoi(ID)
+
 	for a := 0; a < e.NumFloors; a++ {
-		for i := elevio.ButtonType(0); i < 3; i++ {
+		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {
 			elevio.SetButtonLamp(i, a, false)
 		}
 	}
@@ -119,7 +127,6 @@ func FSM_doorTimeOut() {
 			fmt.Print("Door is stuck in Eb_dooropen\n")
 
 			timer.StartTimer(e.DoorOpenDuration)
-			break
 
 		case elevio.EB_Moving:
 			fmt.Print("Door is stuck in Eb_moving1\n")
@@ -128,15 +135,14 @@ func FSM_doorTimeOut() {
 			elevio.SetMotorDirection(e.Direction)
 			fmt.Print("Door is stuck in Eb_moving  2\n")
 
-			break
 		case elevio.EB_Idle:
 			fmt.Print("Door is stuck in Eb_Idle\n")
 
 			elevio.SetDoorOpenLamp(false)
 			elevio.SetMotorDirection(e.Direction)
-			break
+
 		}
-		break
+
 	default:
 		fmt.Print("Door isnt opening for orders\n")
 
@@ -146,7 +152,7 @@ func FSM_doorTimeOut() {
 
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool,
-	msgArrived chan [4][3][3]bool) {
+	msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 
 	fmt.Println("here")
 	init_elevator(drv_floors)
@@ -182,6 +188,9 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 			//Add ignore messages on same IP
 			fmt.Println("At message arrived: \n", a)
 			FSM_onMsgArrived(a)
+		case a := <-setMaster:
+			e.Master = a
+		
 		default:
 			switch e.Master {
 			case false:

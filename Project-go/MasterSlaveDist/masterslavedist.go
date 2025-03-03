@@ -1,21 +1,34 @@
 package masterslavedist
 
 import (
+	config "Project-go/Config"
 	"Project-go/driver-go/elevio"
-	"fmt"
 	"sync"
 	"time"
 )
 
 var (
-	watchdogTimer    *time.Timer
-	watchdogDuration = 5 * time.Second
+	watchdogTimers   [config.NumberElev]*time.Timer
+	watchdogDuration = config.WatchdogDuration
 	mu               sync.Mutex
+	ActiveElev       [config.NumberElev]bool
+	ActiveElevState  [config.NumberElev]elevio.Elevator
+	localElevID      int
 )
 
-func init() {
-	resetWatchdogTimer()
-	go Timer()
+func InitializeMasterSlaveDist(localElev *elevio.Elevator) {
+	localElevID = localElev.ElevatorID
+	ActiveElev[localElevID] = true
+	if localElevID == 0 {
+		localElev.Master = true
+	}
+
+	for i := 0; i < len(watchdogTimers); i++ {
+		if i != localElev.ElevatorID {
+			startWatchdogTimer(i)
+		}
+	}
+
 }
 
 func FetchElevators() []elevio.Elevator {
@@ -23,136 +36,96 @@ func FetchElevators() []elevio.Elevator {
 }
 
 // Implemented in the network module after recieving an alive message
-func AliveRecieved(elevID int) bool {
+func AliveRecieved(elevID int, master bool, localElev *elevio.Elevator) {
 	mu.Lock()
 	defer mu.Unlock()
-	e := FetchElevators()
-	for i := 0; i < len(e); i++ {
-		if e[i].ElevatorID == elevID {
-			// If there are two masters, resolve conflict
-			if e[i].Master && detectMultipleMasters(e[i]) {
-				resolveMasterConflict(&e[i])
-			}
+    //On reconnect
+    copyAliveElev:= ActiveElev
 
-			if e[i].Master {
-				resetWatchdogTimer()
-			}
-			return true
-		}
-	}
-	return false
+	// Set the elevator as active, need it if we have set it as inactive before
+	ActiveElev[elevID] = true
+
+	// Reset the watchdog timer
+	startWatchdogTimer(elevID)
+
+	resolveMasterConflict(elevID, master, localElev)
+
 }
 
-func resolveMasterConflict(elevator *elevio.Elevator) {
-	activeElevators := FetchElevators()
-	var highestPriorityMaster *elevio.Elevator
-
-	for i := range activeElevators {
-		if activeElevators[i].Master {
-			// Select the lowest ElevatorID as the master
-			if highestPriorityMaster == nil || activeElevators[i].ElevatorID < highestPriorityMaster.ElevatorID {
-				highestPriorityMaster = &activeElevators[i]
-			}
+func resolveMasterConflict(elevID int, master bool, localElev *elevio.Elevator) {
+	// If we recieve a message from a master, and we are a master with lower ID, we are now slave
+	if localElev.Master && master {
+		if localElev.ElevatorID > elevID {
+			localElev.Master = false
 		}
 	}
-
-	// If the current elevator is not the chosen master, step down
-	if highestPriorityMaster != nil && elevator.ElevatorID != highestPriorityMaster.ElevatorID {
-		elevator.Master = false
-	}
-}
-
-func detectMultipleMasters(elevator elevio.Elevator) bool {
-	activeElevators := FetchElevators()
-	masterCount := 0
-
-	for _, e := range activeElevators {
-		if e.Master {
-			masterCount++
-		}
-	}
-
-	return masterCount > 1
 }
 
 // Watchdog timer working along with the alive message and timer module to
 // check if the master is still alive
-func resetWatchdogTimer() {
-	if watchdogTimer != nil {
-		// Stop the timer because the master is alive
-		watchdogTimer.Stop()
-	}
-	//Then master is considered dead after 5 seconds
-	watchdogTimer = time.AfterFunc(watchdogDuration, func() {
-		mu.Lock()
-		defer mu.Unlock()
-		fmt.Println("Master is considered dead")
-		ChangeMaster()
-	})
+func startWatchdogTimer(elevID int) {
+	watchdogTimers[elevID] = time.NewTimer(time.Duration(watchdogDuration) * time.Second)
 }
 
 // Timer module to check if something dies
-func Timer() {
+func WatchdogTimer(setMaster chan bool) {
 	//Start timer
 	for {
-		time.Sleep(1 * time.Second)
-		mu.Lock()
-		if watchdogTimer != nil {
-			fmt.Println("Watchdog timer is active")
-		} else {
-			fmt.Println("Watchdog timer is not active")
-			ChangeMaster()
+		for i := 0; i < len(watchdogTimers); i++ {
+			if watchdogTimers[i] != nil {
+				select {
+				case <-watchdogTimers[i].C:
+					ActiveElev[i] = false
+					if i < localElevID {
+						ChangeMaster(setMaster)
+					}
+				}
+			}
 		}
-		mu.Unlock()
-	}
-}
 
-func attemptRestart(elevator *elevio.Elevator) {
-	if elevator == nil {
-		return
 	}
-	fmt.Printf("Attempting to restart elevator %d...\n", elevator.ElevatorID)
-
-	// Simulated restart process
-	go func() {
-		time.Sleep(5 * time.Second) // Simulating restart delay
-		mu.Lock()
-		defer mu.Unlock()
-		fmt.Printf("Elevator %d restarted.\n", elevator.ElevatorID)
-	}()
 }
 
 // Change master function
-func ChangeMaster() {
-	fmt.Println("Changing master")
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	elevators := FetchElevators()
-	var deadElevator *elevio.Elevator
-
-	// Identify the dead elevator based on a missing heartbeat
-	for i := range elevators {
-		if !AliveRecieved(elevators[i].ElevatorID) { // Check if still alive
-			deadElevator = &elevators[i]
-			break
+func ChangeMaster(setMaster chan bool) {
+	// If no elevators with lower ID than us are active, we can become master
+	for i := 0; i < localElevID; i++ {
+		if ActiveElev[i] {
+			return
 		}
+		setMaster <- true
 	}
 
-	if deadElevator != nil {
-		fmt.Printf("Elevator %d (dead) was the master. Redistributing orders...\n", deadElevator.ElevatorID)
-		//Thought of redistributing dead elevator's orders here
-		// redistributeOrders(deadElevator)
-		attemptRestart(deadElevator) // Try restarting dead elevators
-	}
-
-	// Elect a new master
-	for i := range elevators {
-		if !elevators[i].Master { // Find an elevator that was NOT master
-			elevators[i].Master = true
-			fmt.Printf("Elevator %d is now the new master\n", elevators[i].ElevatorID)
-			break
-		}
-	}
 }
+
+// fmt.Println("Changing master")
+
+// mu.Lock()
+// defer mu.Unlock()
+
+// elevators := FetchElevators()
+// var deadElevator *elevio.Elevator
+
+// // Identify the dead elevator based on a missing heartbeat
+// for i := range elevators {
+// 	if !AliveRecieved(elevators[i].ElevatorID) { // Check if still alive
+// 		deadElevator = &elevators[i]
+// 		break
+// 	}
+// }
+
+// if deadElevator != nil {
+// 	fmt.Printf("Elevator %d (dead) was the master. Redistributing orders...\n", deadElevator.ElevatorID)
+// 	//Thought of redistributing dead elevator's orders here
+// 	// redistributeOrders(deadElevator)
+// 	attemptRestart(deadElevator) // Try restarting dead elevators
+// }
+
+// // Elect a new master
+// for i := range elevators {
+// 	if !elevators[i].Master { // Find an elevator that was NOT master
+// 		elevators[i].Master = true
+// 		fmt.Printf("Elevator %d is now the new master\n", elevators[i].ElevatorID)
+// 		break
+// 	}
+// }

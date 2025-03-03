@@ -55,7 +55,7 @@ func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.Nu
 	maxCounterValue := orderCounter[e.ElevatorID]
 
 	//If we have a new order we redistribute hall orders and set new order counter
-	if  CheckNewOrders(e, &maxCounterValue) {
+	if  CheckIfNewOrders(e, &maxCounterValue) {
 		//Fetch active elevators from master-slave module
 		elevators := masterslavedist.FetchAliveElevators(ElevState)
 		orderCounter[e.ElevatorID] = maxCounterValue
@@ -67,7 +67,7 @@ func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.Nu
 	receiver <- AllActiveOrders
 }
 
-func CheckNewOrders(e elevio.Elevator, maxCounterValue *int) bool{
+func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int) bool{
 	//Check if there are new orders in the system
 	
 	for i := 0; i < e.NumFloors; i++ {
@@ -110,7 +110,7 @@ func formatInput(elevators []elevio.Elevator, allActiveOrders [config.NumberElev
 		HallRequests: hallRequests,
 		States:       map[string]HRAElevState{},
 	}
-
+	//Add all active elevator states to cost func input
 	for _, e := range elevators {
 		input.States[strconv.Itoa(e.ElevatorID)] = HRAElevState{
 			Behavior:    behaviorToString[e.Behaviour],
@@ -174,5 +174,3 @@ func transformOutput(ret []byte, input HRAInput) [config.NumberElev][config.Numb
 
 	return newAllActiveOrders
 }
-
-//Add function here polling on the msgArrived arrived channel, when a new order comes

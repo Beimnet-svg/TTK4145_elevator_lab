@@ -2,6 +2,7 @@ package elevator_fsm
 
 import (
 	config "Project-go/Config"
+	masterslavedist "Project-go/MasterSlaveDist"
 	requests "Project-go/driver-go/Requests"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevio"
@@ -155,6 +156,7 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 
 	fmt.Println("here")
 	init_elevator(drv_floors)
+	masterslavedist.InitializeMasterSlaveDist(&e)
 
 	for {
 		select {

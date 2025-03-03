@@ -45,7 +45,7 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	return &message, err
 }
 
-func Sender() {
+func Sender(reciever chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
@@ -55,10 +55,13 @@ func Sender() {
 		} else {
 			SenderSlave(*localElev)
 		}
+		if localElev.Master {
+			ordermanager.UpdateOrders(*localElev, reciever)
+		}
 	}
 }
 
-func Receiver(receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+func Receiver(reciever chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	// Listen for incoming UDP packets on port 20007
 	conn, err := net.ListenPacket("udp", ":20007")
 	if err != nil {
@@ -85,11 +88,11 @@ func Receiver(receiver chan [config.NumberElev][config.NumberFloors][config.Numb
 
 		// Process the received message
 		if msg.Slave != nil {
-			ordermanager.UpdateOrders(msg.Slave.e, receiver)
+			ordermanager.UpdateOrders(msg.Slave.e, reciever)
 			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev)
 		} else if msg.Master != nil {
 			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev)
-			receiver <- msg.Master.Orders
+			reciever <- msg.Master.Orders
 		}
 	}
 }

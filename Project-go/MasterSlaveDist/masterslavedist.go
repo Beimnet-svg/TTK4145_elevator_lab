@@ -13,15 +13,19 @@ var (
 	mu               sync.Mutex
 	ActiveElev       [config.NumberElev]bool
 	localElevID      int
+	disconnected     = false
 )
 
 func InitializeMasterSlaveDist(localElev *elevio.Elevator) {
 	localElevID = localElev.ElevatorID
+
+	// Set the local elevator as active
 	ActiveElev[localElevID] = true
 	if localElevID == 0 {
 		localElev.Master = true
 	}
 
+	// Start the watchdog timers for all elevators, apart from the local one
 	for i := 0; i < len(watchdogTimers); i++ {
 		if i != localElev.ElevatorID {
 			startWatchdogTimer(i)
@@ -41,7 +45,6 @@ func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.
 
 }
 
-// Implemented in the network module after recieving an alive message
 func AliveRecieved(elevID int, master bool, localElev *elevio.Elevator) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -52,21 +55,23 @@ func AliveRecieved(elevID int, master bool, localElev *elevio.Elevator) {
 	// Reset the watchdog timer
 	startWatchdogTimer(elevID)
 
-	resolveMasterConflict(elevID, master, localElev)
+	resolveMasterConflict(master, localElev)
 
 }
 
-func resolveMasterConflict(elevID int, master bool, localElev *elevio.Elevator) {
-	// If we recieve a message from a master, and we are a master with lower ID, we are now slave
+func resolveMasterConflict(master bool, localElev *elevio.Elevator) {
+	// If we recieve a message from a master, 
+	// and we are a master with lower ID or have been disconnected, we are now slave
 	if localElev.Master && master {
-		if localElev.ElevatorID > elevID {
+		if disconnected {
 			localElev.Master = false
+			disconnected = false
 		}
 	}
 }
 
 // Watchdog timer working along with the alive message and timer module to
-// check if the master is still alive
+// check if elevators are alive
 func startWatchdogTimer(elevID int) {
 	watchdogTimers[elevID] = time.NewTimer(time.Duration(watchdogDuration) * time.Second)
 }
@@ -80,9 +85,8 @@ func WatchdogTimer(setMaster chan bool) {
 				select {
 				case <-watchdogTimers[i].C:
 					ActiveElev[i] = false
-					if i < localElevID {
-						ChangeMaster(setMaster)
-					}
+					ChangeMaster(setMaster)
+					
 				}
 			}
 		}
@@ -90,9 +94,18 @@ func WatchdogTimer(setMaster chan bool) {
 	}
 }
 
-// Change master function
 func ChangeMaster(setMaster chan bool) {
-	// If no elevators with lower ID than us are active, we can become master
+	// Count the number of active elevators
+	numActiveElev := getNumActiveElev()
+
+	// If we percieve ourselves as the only active elevator, we are disconnected
+	// from the rest of the system
+	if numActiveElev == 1 {
+		disconnected = true
+		setMaster <- true
+		return
+	}
+
 	for i := 0; i < localElevID; i++ {
 		if ActiveElev[i] {
 			return
@@ -100,4 +113,14 @@ func ChangeMaster(setMaster chan bool) {
 		setMaster <- true
 	}
 
+}
+
+func getNumActiveElev() int {
+	numActiveElev := 0
+	for i := 0; i < len(ActiveElev); i++ {
+		if ActiveElev[i] {
+			numActiveElev++
+		}
+	}
+	return numActiveElev
 }

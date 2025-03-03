@@ -30,7 +30,7 @@ func main() {
 	go timer.PollTimer(doorTimer)
 	go networking.Receiver(msgArrived)
 	go masterslavedist.WatchdogTimer(setMaster)
-	go networking.Sender()
+	go networking.Sender(msgArrived)
 
 	//Networking go routine
 	//Acceptence tests

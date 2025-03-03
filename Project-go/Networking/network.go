@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 )
 
 type OrderMessageSlave struct {
@@ -42,6 +43,19 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	var message OrderMessage
 	err := dec.Decode(&message)
 	return &message, err
+}
+
+func Sender() {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	for range ticker.C {
+		localElev := elevator_fsm.GetElevator()
+		if localElev.Master {
+			orders := ordermanager.AllActiveOrders
+			SenderMaster(*localElev, orders)
+		} else {
+			SenderSlave(*localElev)
+		}
+	}
 }
 
 func Receiver(receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {

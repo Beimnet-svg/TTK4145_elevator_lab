@@ -2,7 +2,6 @@ package elevator_fsm
 
 import (
 	config "Project-go/Config"
-	networking "Project-go/Networking"
 	requests "Project-go/driver-go/Requests"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevio"
@@ -190,17 +189,6 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 			FSM_onMsgArrived(a)
 		case a := <-setMaster:
 			e.Master = a
-		
-		default:
-			switch e.Master {
-			case false:
-
-				networking.SenderSlave(e)
-
-			case true:
-
-				networking.SenderMaster(e, allActiveOrders)
-			}
 
 		}
 

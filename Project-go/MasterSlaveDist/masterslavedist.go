@@ -31,16 +31,21 @@ func InitializeMasterSlaveDist(localElev *elevio.Elevator) {
 
 }
 
-func FetchElevators() []elevio.Elevator {
-	return []elevio.Elevator{}
+func FetchAliveElevators() []elevio.Elevator {
+	AliveElevators := []elevio.Elevator{}
+	for i := 0; i < len(ActiveElev); i++ {
+		if ActiveElev[i] {
+			AliveElevators = append(AliveElevators, ActiveElevState[i])
+		}
+	}
+	return AliveElevators
+
 }
 
 // Implemented in the network module after recieving an alive message
 func AliveRecieved(elevID int, master bool, localElev *elevio.Elevator) {
 	mu.Lock()
 	defer mu.Unlock()
-    //On reconnect
-    copyAliveElev:= ActiveElev
 
 	// Set the elevator as active, need it if we have set it as inactive before
 	ActiveElev[elevID] = true
@@ -98,34 +103,3 @@ func ChangeMaster(setMaster chan bool) {
 
 }
 
-// fmt.Println("Changing master")
-
-// mu.Lock()
-// defer mu.Unlock()
-
-// elevators := FetchElevators()
-// var deadElevator *elevio.Elevator
-
-// // Identify the dead elevator based on a missing heartbeat
-// for i := range elevators {
-// 	if !AliveRecieved(elevators[i].ElevatorID) { // Check if still alive
-// 		deadElevator = &elevators[i]
-// 		break
-// 	}
-// }
-
-// if deadElevator != nil {
-// 	fmt.Printf("Elevator %d (dead) was the master. Redistributing orders...\n", deadElevator.ElevatorID)
-// 	//Thought of redistributing dead elevator's orders here
-// 	// redistributeOrders(deadElevator)
-// 	attemptRestart(deadElevator) // Try restarting dead elevators
-// }
-
-// // Elect a new master
-// for i := range elevators {
-// 	if !elevators[i].Master { // Find an elevator that was NOT master
-// 		elevators[i].Master = true
-// 		fmt.Printf("Elevator %d is now the new master\n", elevators[i].ElevatorID)
-// 		break
-// 	}
-// }

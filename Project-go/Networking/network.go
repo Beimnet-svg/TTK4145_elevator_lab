@@ -4,6 +4,7 @@ import (
 	config "Project-go/Config"
 	masterslavedist "Project-go/MasterSlaveDist"
 	ordermanager "Project-go/OrderManager"
+	"Project-go/driver-go/elevator_fsm"
 	"Project-go/driver-go/elevio"
 	"bytes"
 	"encoding/gob"
@@ -66,13 +67,14 @@ func Receiver(receiver chan [config.NumberElev][config.NumberFloors][config.Numb
 			log.Fatal("Error decoding message:", err)
 		}
 		fmt.Println("msg in Reciever: \n", msg)
+		localElev := elevator_fsm.GetElevator()
 
 		// Process the received message
 		if msg.Slave != nil {
 			ordermanager.UpdateOrders(msg.Slave.e, receiver)
-			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master)
+			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev)
 		} else if msg.Master != nil {
-			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master)
+			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev)
 			receiver <- msg.Master.Orders
 		}
 	}

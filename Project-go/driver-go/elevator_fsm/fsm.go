@@ -20,13 +20,17 @@ var (
 		Requests:         [config.NumberFloors][config.NumberBtn]int{},
 		ActiveOrders:     [config.NumberFloors][config.NumberBtn]bool{},
 		NumFloors:        config.NumberFloors,
-		DoorOpenDuration: 3,
-		Master:           true,
+		DoorOpenDuration: config.DoorOpenDuration,
+		Master:           false,
 	}
 	OrderCounter = 0
 )
 
 var allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
+
+func GetElevator() *elevio.Elevator {
+	return &e
+}
 
 func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 
@@ -148,7 +152,7 @@ func FSM_doorTimeOut() {
 
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool,
-	msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+	msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 
 	fmt.Println("here")
 	init_elevator(drv_floors)
@@ -184,6 +188,9 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 			//Add ignore messages on same IP
 			fmt.Println("At message arrived: \n", a)
 			FSM_onMsgArrived(a)
+		case a := <-setMaster:
+			e.Master = a
+		
 		default:
 			switch e.Master {
 			case false:

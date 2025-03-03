@@ -48,6 +48,7 @@ func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.Nu
 	AllActiveOrders = requests.RequestClearAtCurrentFloor(e, AllActiveOrders)
 
 	maxCounterValue := orderCounter[e.ElevatorID]
+
 	for i := 0; i < e.NumFloors; i++ {
 		for j := 0; j < 3; j++ {
 			//Based on the counter values in e.Requests we can determine if we have a new order
@@ -64,12 +65,13 @@ func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.Nu
 	//If we have a new order we redistribute hall orders and set new order counter
 	if maxCounterValue > orderCounter[e.ElevatorID] {
 		//Fetch active elevators from master-slave module
-		elevators := masterslavedist.FetchElevators()
+		elevators := masterslavedist.FetchAliveElevators()
 		orderCounter[e.ElevatorID] = maxCounterValue
 		input := formatInput(elevators, AllActiveOrders, NewRequests)
 		AllActiveOrders = assignRequests(input)
-		receiver <- AllActiveOrders
 	}
+
+	receiver <- AllActiveOrders
 
 }
 

@@ -4,6 +4,7 @@ import (
 	config "Project-go/Config"
 	masterslavedist "Project-go/MasterSlaveDist"
 	networking "Project-go/Networking"
+	ordermanager "Project-go/OrderManager"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevator_fsm"
 
@@ -28,9 +29,12 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 	go timer.PollTimer(doorTimer)
+
 	go networking.Receiver(msgArrived)
-	go masterslavedist.WatchdogTimer(setMaster)
 	go networking.Sender(msgArrived)
+
+	go masterslavedist.WatchdogTimer(setMaster)
+	go ordermanager.ApplyBackupOrders(setMaster)
 
 	//Networking go routine
 	//Acceptence tests
@@ -39,8 +43,11 @@ func main() {
 	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr,
 		drv_stop, doorTimer, msgArrived, setMaster)
 
+	myelevator := elevator_fsm.GetElevator()
+	go masterslavedist.InitializeMasterSlaveDist(myelevator, msgArrived)
+
 	for {
-		//Send alive message (Elevator nr + Slave or not)
+
 	}
 
 }

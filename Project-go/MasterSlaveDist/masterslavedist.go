@@ -16,19 +16,34 @@ var (
 	Disconnected     = false
 )
 
-func InitializeMasterSlaveDist(localElev *elevio.Elevator) {
+func InitializeMasterSlaveDist(localElev *elevio.Elevator, msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	localElevID = localElev.ElevatorID
 
 	// Set the local elevator as active
 	ActiveElev[localElevID] = true
-	if localElevID == 0 {
-		localElev.Master = true
-	}
 
 	// Start the watchdog timers for all elevators, apart from the local one
 	for i := 0; i < len(watchdogTimers); i++ {
 		if i != localElev.ElevatorID {
 			startWatchdogTimer(i)
+		}
+	}
+
+	// On startup we set ID 0 elevator as master, unless we already have a master on the internet sending messages
+	if localElevID == 0 {
+		timer := time.NewTimer(config.WatchdogDuration * time.Second)
+
+		for {
+			select {
+			case <-msgArrived:
+				return
+
+			case <-timer.C:
+				localElev.Master = true
+				return
+
+			}
+
 		}
 	}
 
@@ -60,7 +75,7 @@ func AliveRecieved(elevID int, master bool, localElev *elevio.Elevator) {
 }
 
 func resolveMasterConflict(master bool, localElev *elevio.Elevator) {
-	// If we recieve a message from a master, 
+	// If we recieve a message from a master,
 	// and we are a master with lower ID or have been disconnected, we are now slave
 	if localElev.Master && master {
 		if Disconnected {
@@ -86,7 +101,7 @@ func WatchdogTimer(setMaster chan bool) {
 				case <-watchdogTimers[i].C:
 					ActiveElev[i] = false
 					ChangeMaster(setMaster)
-					
+
 				}
 			}
 		}

@@ -4,6 +4,7 @@ import (
 	config "Project-go/Config"
 	masterslavedist "Project-go/MasterSlaveDist"
 	requests "Project-go/driver-go/Requests"
+	"Project-go/driver-go/elevator_fsm"
 	"Project-go/driver-go/elevio"
 	"encoding/json"
 	"fmt"
@@ -46,16 +47,16 @@ type HRAInput struct {
 func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	//Update elevator states
 	ElevState[e.ElevatorID] = e
-	
+
 	//Clear orders at current floor based on elevator state
 	AllActiveOrders = requests.RequestClearAtCurrentFloor(e, AllActiveOrders)
 
-	//Create a maxCounterValue, where every value in e.requests higher than this 
+	//Create a maxCounterValue, where every value in e.requests higher than this
 	//value is considered a new order
 	maxCounterValue := orderCounter[e.ElevatorID]
 
 	//If we have a new order we redistribute hall orders and set new order counter
-	if  CheckIfNewOrders(e, &maxCounterValue) {
+	if CheckIfNewOrders(e, &maxCounterValue) {
 		//Fetch active elevators from master-slave module
 		elevators := masterslavedist.FetchAliveElevators(ElevState)
 		orderCounter[e.ElevatorID] = maxCounterValue
@@ -67,9 +68,9 @@ func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.Nu
 	receiver <- AllActiveOrders
 }
 
-func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int) bool{
+func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int) bool {
 	//Check if there are new orders in the system
-	
+
 	for i := 0; i < e.NumFloors; i++ {
 		for j := 0; j < 3; j++ {
 			//Based on the counter values in e.Requests we can determine if we have a new order
@@ -85,7 +86,6 @@ func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int) bool{
 
 	return *maxCounterValue > orderCounter[e.ElevatorID]
 }
-
 
 func formatInput(elevators []elevio.Elevator, allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool,
 	newRequests [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) HRAInput {
@@ -173,4 +173,14 @@ func transformOutput(ret []byte, input HRAInput) [config.NumberElev][config.Numb
 	}
 
 	return newAllActiveOrders
+}
+
+// 
+func ApplyBackupOrders(setMaster chan bool) {
+	for {
+		select {
+		case <-setMaster:
+			AllActiveOrders = elevator_fsm.AllActiveOrders
+		}
+	}
 }

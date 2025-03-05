@@ -2,7 +2,6 @@ package elevator_fsm
 
 import (
 	config "Project-go/Config"
-	masterslavedist "Project-go/MasterSlaveDist"
 	requests "Project-go/driver-go/Requests"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevio"
@@ -22,12 +21,12 @@ var (
 		NumFloors:        config.NumberFloors,
 		DoorOpenDuration: config.DoorOpenDuration,
 		Master:           false,
-		Obstruction: 	  false,
+		Obstruction:      false,
 	}
 	OrderCounter = 0
 )
 
-var allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
+var AllActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 
 func GetElevator() *elevio.Elevator {
 	return &e
@@ -56,7 +55,7 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 func FSM_onMsgArrived(orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 
 	e.ActiveOrders = orders[e.ElevatorID]
-	allActiveOrders = orders
+	AllActiveOrders = orders
 
 	switch e.Behaviour {
 	case elevio.EB_Idle:
@@ -179,7 +178,6 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 
 	fmt.Println("here")
 	init_elevator(drv_floors)
-	masterslavedist.InitializeMasterSlaveDist(&e)
 
 	for {
 		select {

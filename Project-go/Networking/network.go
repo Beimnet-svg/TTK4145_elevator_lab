@@ -4,12 +4,14 @@ import (
 	config "Project-go/Config"
 	masterslavedist "Project-go/MasterSlaveDist"
 	ordermanager "Project-go/OrderManager"
+	"Project-go/driver-go/elevator_fsm"
 	"Project-go/driver-go/elevio"
 	"bytes"
 	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
+	"time"
 )
 
 type OrderMessageSlave struct {
@@ -35,6 +37,7 @@ func init() {
 	gob.Register(OrderMessage{})
 }
 
+// Make struct into byte slice
 func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	buf := bytes.NewBuffer(buffer)
 	dec := gob.NewDecoder(buf)
@@ -43,9 +46,33 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	return &message, err
 }
 
-func Receiver(receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	for range ticker.C {
+		localElev := elevator_fsm.GetElevator()
+
+		// If the elevator is percieved disconnected, we don't send any messages other than locally
+		if masterslavedist.Disconnected {
+			ordermanager.UpdateOrders(localElev, msgArrived)
+			continue
+		}
+
+		if localElev.Master {
+			orders := ordermanager.AllActiveOrders
+			SenderMaster(localElev, orders)
+			ordermanager.UpdateOrders(localElev, msgArrived)
+
+		} else {
+			SenderSlave(localElev)
+		}
+
+	}
+}
+
+func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 	// Listen for incoming UDP packets on port 20007
-	conn, err := net.ListenPacket("udp", ":20007")
+	localAdress, _ := net.ResolveUDPAddr("udp", ":20007")
+	conn, err := net.ListenUDP("udp", localAdress)
 	if err != nil {
 		log.Fatal("Error listening on port 20007:", err)
 	}
@@ -54,33 +81,36 @@ func Receiver(receiver chan [config.NumberElev][config.NumberFloors][config.Numb
 	buffer := make([]byte, 1024)
 
 	for {
-		// Wait for a message to be received
-		n, _, err := conn.ReadFrom(buffer)
+		n, addrSender, err := conn.ReadFrom(buffer)
 		if err != nil {
 			log.Fatal("Error reading from connection:", err)
 		}
 
-		// Decode the received message
+		// Ignore messages from localhost
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+		if localAddr.IP.Equal(addrSender.(*net.UDPAddr).IP) {
+			continue
+		}
+
 		msg, err := decodeMessage(buffer[:n])
 		if err != nil {
 			log.Fatal("Error decoding message:", err)
 		}
-		fmt.Println("msg in Reciever: \n", msg)
+
+		localElev := elevator_fsm.GetElevator()
 
 		// Process the received message
 		if msg.Slave != nil {
-			ordermanager.UpdateOrders(msg.Slave.e, receiver)
-			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master)
+			ordermanager.UpdateOrders(msg.Slave.e, msgArrived)
+			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
 		} else if msg.Master != nil {
-			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master)
-			receiver <- msg.Master.Orders
+			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
+			msgArrived <- msg.Master.Orders
 		}
 	}
 }
 func SenderSlave(e elevio.Elevator) {
-	//Call this when we want to send a message
 
-	// Create an instance of the struct
 	message := OrderMessage{
 		Slave: &OrderMessageSlave{
 			ElevID: e.ElevatorID,
@@ -89,14 +119,17 @@ func SenderSlave(e elevio.Elevator) {
 		},
 	}
 
-	// Call this when we want to send a message
-	serverAddr := ":20007"
-	conn, _ := net.Dial("udp", serverAddr)
+	broadcastAddr := "255.255.255.255"
+	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
+	conn, err := net.DialUDP("udp", nil, destinationAddr)
+	if err != nil {
+		fmt.Println("Error dialing UDP:", err)
+	}
 	defer conn.Close()
 
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(message)
+	err = enc.Encode(message)
 	if err != nil {
 		fmt.Println("Error encoding orders:", err)
 	}
@@ -105,10 +138,8 @@ func SenderSlave(e elevio.Elevator) {
 
 }
 
-func SenderMaster(e elevio.Elevator, orders [3][4][3]bool) {
-	//Call this when we want to send a message
+func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 
-	// Create an instance of the struct
 	message := OrderMessage{
 		Master: &OrderMessageMaster{
 			ElevID: e.ElevatorID,
@@ -117,100 +148,21 @@ func SenderMaster(e elevio.Elevator, orders [3][4][3]bool) {
 		},
 	}
 
-	serverAddr := ":20007"
-	conn, _ := net.Dial("udp", serverAddr)
+	broadcastAddr := "255.255.255.255"
+	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
+	conn, err := net.DialUDP("udp", nil, destinationAddr)
+	if err != nil {
+		fmt.Println("Error dialing UDP:", err)
+	}
 	defer conn.Close()
 
-	//Master sending out orders to all elevators, including which elev should take it
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(message)
+	err = enc.Encode(message)
 	if err != nil {
 		fmt.Println("Error encoding orders:", err)
 	}
 	content := buffer.Bytes()
 	conn.Write(content)
-	//Master sending out orders to all elevators, including which elev should take it
 
 }
-
-/*
-func SenderAlive(e elevio.Elevator) {
-	//Call this when we want to send a message
-
-	serverAddr := ":20007"
-	conn, _ := net.Dial("udp", serverAddr)
-	defer conn.Close()
-
-	message := strconv.Itoa(e.ElevatorID) + strconv.Itoa(e.Master)
-	content := []byte(message)
-	conn.Write(content)
-
-}
-func SenderStruct(e elevio.Elevator) {
-	//Call this when we want to send a message
-
-	serverAddr := ":20007"
-	conn, _ := net.Dial("udp", serverAddr)
-	defer conn.Close()
-
-	var buffer bytes.Buffer
-	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(e)
-	if err != nil {
-		fmt.Println("Error encoding elevator:", err)
-	}
-	content := buffer.Bytes()
-	conn.Write(content)
-
-}
-func SenderOrdersMaster(orders [3][4][3]int) {
-	//Call this when we want to send a message
-
-	serverAddr := ":20007"
-	conn, _ := net.Dial("udp", serverAddr)
-	defer conn.Close()
-
-	//Master sending out orders to all elevators, including which elev should take it
-	var buffer bytes.Buffer
-	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(orders)
-	if err != nil {
-		fmt.Println("Error encoding orders:", err)
-	}
-	content := buffer.Bytes()
-	conn.Write(content)
-	//Master sending out orders to all elevators, including which elev should take it
-
-}
-
-func SenderNewOrderSlave(elevID int, orders [4][3][2]int) {
-	//Call this when we want to send a message
-	type OrderMessage struct {
-        ElevID int
-        Orders [4][3][2]int
-    }
-
-    // Create an instance of the struct
-    message := OrderMessage{
-        ElevID: elevID,
-        Orders: orders,
-    }
-
-    // Call this when we want to send a message
-    serverAddr := ":20007"
-    conn, _ := net.Dial("udp", serverAddr)
-    defer conn.Close()
-
-    var buffer bytes.Buffer
-    enc := gob.NewEncoder(&buffer)
-    err := enc.Encode(message)
-    if err != nil {
-        fmt.Println("Error encoding orders:", err)
-    }
-    content := buffer.Bytes()
-    conn.Write(content)
-
-
-}
-*/

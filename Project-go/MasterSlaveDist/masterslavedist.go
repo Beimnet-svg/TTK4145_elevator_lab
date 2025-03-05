@@ -13,7 +13,7 @@ var (
 	mu               sync.Mutex
 	ActiveElev       [config.NumberElev]bool
 	localElevID      int
-	disconnected     = false
+	Disconnected     = false
 )
 
 func InitializeMasterSlaveDist(localElev *elevio.Elevator) {
@@ -63,9 +63,9 @@ func resolveMasterConflict(master bool, localElev *elevio.Elevator) {
 	// If we recieve a message from a master, 
 	// and we are a master with lower ID or have been disconnected, we are now slave
 	if localElev.Master && master {
-		if disconnected {
+		if Disconnected {
 			localElev.Master = false
-			disconnected = false
+			Disconnected = false
 		}
 	}
 }
@@ -101,7 +101,7 @@ func ChangeMaster(setMaster chan bool) {
 	// If we percieve ourselves as the only active elevator, we are disconnected
 	// from the rest of the system
 	if numActiveElev == 1 {
-		disconnected = true
+		Disconnected = true
 		setMaster <- true
 		return
 	}

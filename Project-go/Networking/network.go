@@ -48,6 +48,10 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 func Sender(reciever chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	for range ticker.C {
+		if masterslavedist.Disconnected {
+			continue
+		}
+
 		localElev := elevator_fsm.GetElevator()
 		if localElev.Master {
 			orders := ordermanager.AllActiveOrders

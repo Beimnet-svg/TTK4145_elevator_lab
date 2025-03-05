@@ -135,7 +135,7 @@ func assignRequests(input HRAInput) [config.NumberElev][config.NumberFloors][con
 	case "linux":
 		hraExecutable = "OrderManager/hall_request_assigner"
 	case "windows":
-		hraExecutable = "hall_request_assigner.exe"
+		hraExecutable = "./OrderManager/hall_request_assigner.exe"
 	default:
 		panic("OS not supported")
 	}

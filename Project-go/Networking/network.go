@@ -69,7 +69,8 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 
 func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 	// Listen for incoming UDP packets on port 20007
-	conn, err := net.ListenPacket("udp", ":20007")
+	localAdress, _ := net.ResolveUDPAddr("udp", ":20007")
+	conn, err := net.ListenUDP("udp", localAdress)
 	if err != nil {
 		log.Fatal("Error listening on port 20007:", err)
 	}
@@ -122,13 +123,17 @@ func SenderSlave(e elevio.Elevator) {
 	}
 
 	// Call this when we want to send a message
-	serverAddr := ":20007"
-	conn, _ := net.Dial("udp", serverAddr)
+	broadcastAddr := "255.255.255.255"
+	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
+	conn, err := net.DialUDP("udp", nil, destinationAddr)
+	if err != nil {
+		fmt.Println("Error dialing UDP:", err)
+	}
 	defer conn.Close()
 
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(message)
+	err = enc.Encode(message)
 	if err != nil {
 		fmt.Println("Error encoding orders:", err)
 	}
@@ -151,14 +156,18 @@ func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 
 	fmt.Print("Sending message from master\n")
 
-	serverAddr := ":20007"
-	conn, _ := net.Dial("udp", serverAddr)
+	broadcastAddr := "255.255.255.255"
+	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
+	conn, err := net.DialUDP("udp", nil, destinationAddr)
+	if err != nil {
+		fmt.Println("Error dialing UDP:", err)
+	}
 	defer conn.Close()
 
 	//Master sending out orders to all elevators, including which elev should take it
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(message)
+	err = enc.Encode(message)
 	if err != nil {
 		fmt.Println("Error encoding orders:", err)
 	}

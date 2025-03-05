@@ -28,8 +28,8 @@ var (
 
 var AllActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 
-func GetElevator() *elevio.Elevator {
-	return &e
+func GetElevator() elevio.Elevator {
+	return e
 }
 
 func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
@@ -202,10 +202,10 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 				FSM_doorTimeOut()
 			}
 		case a := <-msgArrived:
-			//Add ignore messages on same IP
-			fmt.Println("At message arrived: \n", a)
+
 			FSM_onMsgArrived(a)
 		case a := <-setMaster:
+			fmt.Print("Master has been set to: ", a, "\n")
 			e.Master = a
 
 		}

@@ -51,23 +51,23 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 		localElev := elevator_fsm.GetElevator()
 
 		if masterslavedist.Disconnected {
-			ordermanager.UpdateOrders(*localElev, msgArrived)
+			ordermanager.UpdateOrders(localElev, msgArrived)
 			continue
 		}
 
 		if localElev.Master {
 			orders := ordermanager.AllActiveOrders
-			SenderMaster(*localElev, orders)
+			SenderMaster(localElev, orders)
 		} else {
-			SenderSlave(*localElev)
+			SenderSlave(localElev)
 		}
 		if localElev.Master {
-			ordermanager.UpdateOrders(*localElev, msgArrived)
+			ordermanager.UpdateOrders(localElev, msgArrived)
 		}
 	}
 }
 
-func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 	// Listen for incoming UDP packets on port 20007
 	conn, err := net.ListenPacket("udp", ":20007")
 	if err != nil {
@@ -79,9 +79,14 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 
 	for {
 		// Wait for a message to be received
-		n, _, err := conn.ReadFrom(buffer)
+		n, addrSender, err := conn.ReadFrom(buffer)
 		if err != nil {
 			log.Fatal("Error reading from connection:", err)
+		}
+
+		// Ignore messages from localhost
+		if addrSender.String()[:9] == "127.0.0.1" {
+			continue
 		}
 
 		// Decode the received message
@@ -89,15 +94,15 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 		if err != nil {
 			log.Fatal("Error decoding message:", err)
 		}
-		fmt.Println("msg in Reciever: \n", msg)
+
 		localElev := elevator_fsm.GetElevator()
 
 		// Process the received message
 		if msg.Slave != nil {
 			ordermanager.UpdateOrders(msg.Slave.e, msgArrived)
-			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev)
+			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
 		} else if msg.Master != nil {
-			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev)
+			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
 			msgArrived <- msg.Master.Orders
 		}
 	}

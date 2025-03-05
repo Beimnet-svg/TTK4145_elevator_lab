@@ -3,6 +3,7 @@ package masterslavedist
 import (
 	config "Project-go/Config"
 	"Project-go/driver-go/elevio"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -16,7 +17,7 @@ var (
 	Disconnected     = false
 )
 
-func InitializeMasterSlaveDist(localElev *elevio.Elevator, msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 	localElevID = localElev.ElevatorID
 
 	// Set the local elevator as active
@@ -39,7 +40,8 @@ func InitializeMasterSlaveDist(localElev *elevio.Elevator, msgArrived chan [conf
 				return
 
 			case <-timer.C:
-				localElev.Master = true
+				fmt.Println("Setting master")
+				setMaster <- true
 				return
 
 			}
@@ -60,7 +62,7 @@ func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.
 
 }
 
-func AliveRecieved(elevID int, master bool, localElev *elevio.Elevator) {
+func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster chan bool) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -70,16 +72,16 @@ func AliveRecieved(elevID int, master bool, localElev *elevio.Elevator) {
 	// Reset the watchdog timer
 	startWatchdogTimer(elevID)
 
-	resolveMasterConflict(master, localElev)
+	resolveMasterConflict(master, localElev, setMaster)
 
 }
 
-func resolveMasterConflict(master bool, localElev *elevio.Elevator) {
+func resolveMasterConflict(master bool, localElev elevio.Elevator, setMaster chan bool) {
 	// If we recieve a message from a master,
 	// and we are a master with lower ID or have been disconnected, we are now slave
 	if localElev.Master && master {
 		if Disconnected {
-			localElev.Master = false
+			setMaster <- false
 			Disconnected = false
 		}
 	}

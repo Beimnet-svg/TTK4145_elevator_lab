@@ -89,8 +89,13 @@ func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int) bool {
 
 func formatInput(elevators []elevio.Elevator, allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool,
 	newRequests [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) HRAInput {
-	hallRequests := [][2]bool{}
+
+	hallRequests := make([][2]bool, config.NumberFloors)
 	cabRequests := [config.NumberElev][]bool{}
+
+	for i := range cabRequests {
+		cabRequests[i] = make([]bool, config.NumberFloors)
+	}
 
 	for i := 0; i < config.NumberElev; i++ {
 		for j := 0; j < config.NumberFloors; j++ {
@@ -127,7 +132,7 @@ func assignRequests(input HRAInput) [config.NumberElev][config.NumberFloors][con
 	hraExecutable := ""
 	switch runtime.GOOS {
 	case "linux":
-		hraExecutable = "hall_request_assigner"
+		hraExecutable = "OrderManager/hall_request_assigner"
 	case "windows":
 		hraExecutable = "hall_request_assigner.exe"
 	default:
@@ -163,7 +168,7 @@ func transformOutput(ret []byte, input HRAInput) [config.NumberElev][config.Numb
 		for i := 0; i < config.NumberFloors; i++ {
 			for j := 0; j < 2; j++ {
 				//Add hall orders to set of active orders
-				newAllActiveOrders[i][j][elevatorID] = orders[i][j]
+				newAllActiveOrders[elevatorID][i][j] = orders[i][j]
 			}
 			//Add cab orders to set of active orders
 			newAllActiveOrders[elevatorID][i][2] = input.States[ID].CabRequests[i]
@@ -175,12 +180,13 @@ func transformOutput(ret []byte, input HRAInput) [config.NumberElev][config.Numb
 	return newAllActiveOrders
 }
 
-// 
 func ApplyBackupOrders(setMaster chan bool) {
 	for {
 		select {
-		case <-setMaster:
-			AllActiveOrders = elevator_fsm.AllActiveOrders
+		case a := <-setMaster:
+			if a {
+				AllActiveOrders = elevator_fsm.AllActiveOrders
+			}
 		}
 	}
 }

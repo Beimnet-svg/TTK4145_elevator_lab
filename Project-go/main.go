@@ -30,7 +30,7 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 	go timer.PollTimer(doorTimer)
 
-	go networking.Receiver(msgArrived)
+	go networking.Receiver(msgArrived, setMaster)
 	go networking.Sender(msgArrived)
 
 	go masterslavedist.WatchdogTimer(setMaster)
@@ -44,7 +44,7 @@ func main() {
 		drv_stop, doorTimer, msgArrived, setMaster)
 
 	myelevator := elevator_fsm.GetElevator()
-	go masterslavedist.InitializeMasterSlaveDist(myelevator, msgArrived)
+	go masterslavedist.InitializeMasterSlaveDist(myelevator, msgArrived, setMaster)
 
 	for {
 

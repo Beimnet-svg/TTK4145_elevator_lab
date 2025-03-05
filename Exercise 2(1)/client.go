@@ -6,8 +6,12 @@ import (
 )
 
 func main() {
-	serverAddr := "10.100.23.204:20007"
-	conn, _ := net.Dial("udp", serverAddr)
+	broadcastAddr := "255.255.255.255"
+	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
+	conn, err := net.DialUDP("udp", nil, destinationAddr)
+	if err != nil {
+		return
+	}
 	defer conn.Close()
 
 	for {

@@ -50,10 +50,10 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
 
-		if masterslavedist.Disconnected {
-			ordermanager.UpdateOrders(localElev, msgArrived)
-			continue
-		}
+		// if masterslavedist.Disconnected {
+		// 	ordermanager.UpdateOrders(localElev, msgArrived)
+		// 	continue
+		// }
 
 		if localElev.Master {
 			orders := ordermanager.AllActiveOrders
@@ -83,6 +83,8 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 		if err != nil {
 			log.Fatal("Error reading from connection:", err)
 		}
+
+		fmt.Print("Received message from ", addrSender, "\n")
 
 		// Ignore messages from localhost
 		if addrSender.String()[:9] == "127.0.0.1" {
@@ -146,6 +148,8 @@ func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 			Orders: orders,
 		},
 	}
+
+	fmt.Print("Sending message from master\n")
 
 	serverAddr := ":20007"
 	conn, _ := net.Dial("udp", serverAddr)

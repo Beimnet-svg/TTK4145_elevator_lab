@@ -15,7 +15,6 @@ import (
 
 var (
 	AllActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
-	NewRequests     [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 	orderCounter    [config.NumberElev]int
 	ElevState       [config.NumberElev]elevio.Elevator
 )
@@ -45,6 +44,8 @@ type HRAInput struct {
 }
 
 func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+	NewRequests := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
+
 	//Update elevator states
 	ElevState[e.ElevatorID] = e
 
@@ -56,7 +57,7 @@ func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.Nu
 	maxCounterValue := orderCounter[e.ElevatorID]
 
 	//If we have a new order we redistribute hall orders and set new order counter
-	if CheckIfNewOrders(e, &maxCounterValue) {
+	if CheckIfNewOrders(e, &maxCounterValue, &NewRequests) {
 		//Fetch active elevators from master-slave module
 		elevators := masterslavedist.FetchAliveElevators(ElevState)
 		orderCounter[e.ElevatorID] = maxCounterValue
@@ -68,14 +69,14 @@ func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.Nu
 	receiver <- AllActiveOrders
 }
 
-func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int) bool {
+func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int, NewRequests *[config.NumberElev][config.NumberFloors][config.NumberBtn]bool) bool {
 	//Check if there are new orders in the system
 
-	for i := 0; i < e.NumFloors; i++ {
-		for j := 0; j < 3; j++ {
+	for i := 0; i < config.NumberFloors; i++ {
+		for j := 0; j < config.NumberBtn; j++ {
 			//Based on the counter values in e.Requests we can determine if we have a new order
 			if e.Requests[i][j] > orderCounter[e.ElevatorID] {
-				NewRequests[i][j][e.ElevatorID] = true
+				NewRequests[e.ElevatorID][i][j] = true
 				if e.Requests[i][j] > *maxCounterValue {
 					//Find the highest counter value in the elevator
 					*maxCounterValue = e.Requests[i][j]

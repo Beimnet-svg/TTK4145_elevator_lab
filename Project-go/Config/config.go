@@ -6,5 +6,4 @@ const (
 	NumberBtn        = 3
 	WatchdogDuration = 2
 	DoorOpenDuration = 3
-	ElevatorID       = 0
 )

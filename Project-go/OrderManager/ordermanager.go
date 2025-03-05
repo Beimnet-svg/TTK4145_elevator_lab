@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	AllActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
+	allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 	orderCounter    [config.NumberElev]int
 	ElevState       [config.NumberElev]elevio.Elevator
 )
@@ -44,29 +44,27 @@ type HRAInput struct {
 }
 
 func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
-	NewRequests := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
+	newRequests := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
 
-	//Update elevator states
 	ElevState[e.ElevatorID] = e
 
-	//Clear orders at current floor based on elevator state
-	AllActiveOrders = requests.RequestClearAtCurrentFloor(e, AllActiveOrders)
+	allActiveOrders = requests.RequestClearAtCurrentFloor(e, allActiveOrders)
 
 	//Create a maxCounterValue, where every value in e.requests higher than this
 	//value is considered a new order
 	maxCounterValue := orderCounter[e.ElevatorID]
 
 	//If we have a new order we redistribute hall orders and set new order counter
-	if CheckIfNewOrders(e, &maxCounterValue, &NewRequests) {
-		//Fetch active elevators from master-slave module
-		elevators := masterslavedist.FetchAliveElevators(ElevState)
+	if CheckIfNewOrders(e, &maxCounterValue, &newRequests) {
+
+		aliveElevatorStates := masterslavedist.FetchAliveElevators(ElevState)
 		orderCounter[e.ElevatorID] = maxCounterValue
-		input := formatInput(elevators, AllActiveOrders, NewRequests)
-		AllActiveOrders = assignRequests(input)
+		input := formatInput(aliveElevatorStates, allActiveOrders, newRequests)
+		allActiveOrders = assignRequests(input)
 	}
 
 	//Send updated orders to all elevators
-	receiver <- AllActiveOrders
+	receiver <- allActiveOrders
 }
 
 func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int, NewRequests *[config.NumberElev][config.NumberFloors][config.NumberBtn]bool) bool {
@@ -88,12 +86,14 @@ func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int, NewRequests *[con
 	return *maxCounterValue > orderCounter[e.ElevatorID]
 }
 
+// Format input to be used in the cost function
 func formatInput(elevators []elevio.Elevator, allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool,
 	newRequests [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) HRAInput {
 
 	hallRequests := make([][2]bool, config.NumberFloors)
 	cabRequests := [config.NumberElev][]bool{}
 
+	//Init cabRequests
 	for i := range cabRequests {
 		cabRequests[i] = make([]bool, config.NumberFloors)
 	}
@@ -155,6 +155,7 @@ func assignRequests(input HRAInput) [config.NumberElev][config.NumberFloors][con
 
 }
 
+// Transform the output from the cost function to a format that can be used in the ordermanager
 func transformOutput(ret []byte, input HRAInput) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
 
 	tempOutput := new(map[string][][2]bool)
@@ -181,12 +182,13 @@ func transformOutput(ret []byte, input HRAInput) [config.NumberElev][config.Numb
 	return newAllActiveOrders
 }
 
+// Apply backup to new master
 func ApplyBackupOrders(setMaster chan bool) {
 	for {
 		select {
 		case a := <-setMaster:
 			if a {
-				AllActiveOrders = elevator_fsm.AllActiveOrders
+				allActiveOrders = elevator_fsm.AllActiveOrders
 			}
 		}
 	}

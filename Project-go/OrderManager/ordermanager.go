@@ -43,6 +43,10 @@ type HRAInput struct {
 	States       map[string]HRAElevState `json:"states"`
 }
 
+func GetAllActiveOrder() [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{
+	return allActiveOrders
+}
+
 func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	newRequests := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
 

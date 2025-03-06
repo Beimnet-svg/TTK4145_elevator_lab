@@ -58,7 +58,7 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 		}
 
 		if localElev.Master {
-			orders := ordermanager.AllActiveOrders
+			orders := ordermanager.GetAllActiveOrder()
 			SenderMaster(localElev, orders)
 			ordermanager.UpdateOrders(localElev, msgArrived)
 

@@ -6,8 +6,6 @@ import (
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevio"
 	"fmt"
-	"os"
-	"strconv"
 )
 
 var (
@@ -78,11 +76,6 @@ func FSM_onMsgArrived(orders [config.NumberElev][config.NumberFloors][config.Num
 
 func init_elevator(drv_floors chan int) {
 	// Take input argument from terminal as elevator ID
-	ID := os.Args[1]
-
-	fmt.Print("ID: ", ID)
-
-	e.ElevatorID, _ = strconv.Atoi(ID)
 
 	for a := 0; a < e.NumFloors; a++ {
 		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {
@@ -104,6 +97,10 @@ func init_elevator(drv_floors chan int) {
 	elevio.SetMotorDirection(elevio.MD_Stop)
 	elevio.SetFloorIndicator(e.CurrentFloor)
 
+}
+
+func SetElevatorID(ID int) {
+	e.ElevatorID = ID
 }
 
 func FSM_onButtonPress(b elevio.ButtonEvent) {

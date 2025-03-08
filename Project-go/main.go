@@ -7,6 +7,9 @@ import (
 	ordermanager "Project-go/OrderManager"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevator_fsm"
+	"fmt"
+	"os"
+	"strconv"
 
 	"Project-go/driver-go/elevio"
 )
@@ -23,6 +26,12 @@ var setMaster = make(chan bool)
 func main() {
 
 	elevio.Init("localhost:15657", config.NumberFloors)
+	ID := os.Args[1]
+
+	fmt.Print("ID: ", ID)
+	ID_e, _ := strconv.Atoi(ID)
+
+	elevator_fsm.SetElevatorID(ID_e)
 
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)

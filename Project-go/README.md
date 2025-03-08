@@ -18,5 +18,6 @@ Current bugs:
 
 - When pressing up and down in a floor, it removes both of them when reaching the floor
 - Some weird behaviour in master slave distributer that has to be debugged
+- On startup, there is a race condition when setting the elevator ID from OS args between the elevator_fsm and MSD
 
 

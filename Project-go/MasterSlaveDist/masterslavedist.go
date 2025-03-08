@@ -125,7 +125,7 @@ func WatchdogTimer(setMaster chan bool) {
 				select {
 				case <-watchdogTimers[i].C:
 					ActiveElev[i] = false
-					fmt.Print("Elevator disc\n")
+					fmt.Print("Elevator disc", i, "\n")
 					ChangeMaster(setMaster, i)
 				default:
 					// Timer hasn't fired; continue to the next timer.

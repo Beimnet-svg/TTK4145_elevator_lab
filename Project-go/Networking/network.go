@@ -95,33 +95,36 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 	conn.SetReadDeadline(time.Time{})
 
 	for {
-		n, addrSender, err := conn.ReadFrom(buffer)
+		n, _, err := conn.ReadFrom(buffer)
 		if err != nil {
-			log.Fatal("Error reading from connection:", err)
+			log.Println("Error reading from connection:", err)
+			continue // Log the error and keep listening
 		}
 
-		// Ignore messages from localhost
-		localAddr := conn.LocalAddr().(*net.UDPAddr)
-		if localAddr.IP.Equal(addrSender.(*net.UDPAddr).IP) {
-			continue
-		}
+		// Ignore messages from localhost (see next section for improvements)
+		// localAddr := conn.LocalAddr().(*net.UDPAddr)
+		// if localAddr.IP.Equal(addrSender.(*net.UDPAddr).IP) {
+		// 	continue
+		// }
 
 		msg, err := decodeMessage(buffer[:n])
 		if err != nil {
-			log.Fatal("Error decoding message:", err)
+			log.Println("Error decoding message:", err)
+			continue // Skip this malformed message
 		}
 
 		localElev := elevator_fsm.GetElevator()
 
-		// Process the received message
-		if msg.Slave != nil {
+		//If we got msg from same elevator id as we have locally, skip it
+		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
 			ordermanager.UpdateOrders(msg.Slave.e, msgArrived)
 			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
-		} else if msg.Master != nil {
+		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
 			msgArrived <- msg.Master.Orders
 		}
 	}
+
 }
 func SenderSlave(e elevio.Elevator) {
 

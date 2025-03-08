@@ -67,13 +67,18 @@ func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster
 	defer mu.Unlock()
 
 	ActiveElev[elevID] = true
-	fmt.Print("Alive recieved from: ", elevID, "\n")
 
-	// Reset the watchdog timer
+	// Reset the watchdog timer for the sender
 	startWatchdogTimer(elevID)
 
-	resolveMasterConflict(master, localElev, elevID, setMaster)
+	// If we were previously marked as disconnected and we receive a message from another elevator,
+	// reset the disconnected flag.
+	if Disconnected && elevID != localElev.ElevatorID {
+		fmt.Println("Reconnecting: clearing disconnected flag.")
+		Disconnected = false
+	}
 
+	resolveMasterConflict(master, localElev, elevID, setMaster)
 }
 
 func resolveMasterConflict(isMsgMaster bool, localElev elevio.Elevator, senderElevID int, setMaster chan bool) {

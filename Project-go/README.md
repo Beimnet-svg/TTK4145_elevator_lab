@@ -18,5 +18,6 @@ Current bugs:
 
 - When pressing up and down in a floor, it removes both of them when reaching the floor
 - Some weird behaviour in master slave distributer that has to be debugged
-- When starting the program, -> Running master, sets itself to disconnected and running as master -> Starts elev 1 both elevs sees eachother, but then watchdogtimer for both ID 0 and 2 runs out for 1 and it stops sending, forcing ID 0 to think it is alone again. 
+- When staring two elevators, killing master does not make slave master.
+- Need a timer module for when the state of an elevator hasnt changed for a period of time, to indicate that the motor is dead. 
 

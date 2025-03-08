@@ -69,7 +69,6 @@ func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster
 	ActiveElev[elevID] = true
 	// Reset the watchdog timer for the sender.
 	startWatchdogTimer(elevID)
-	fmt.Print("Active elevs", ActiveElev, "\n")
 
 	// If we receive a heartbeat from another elevator, clear the disconnected flag.
 	// (This handles the edge case where the master started alone.)

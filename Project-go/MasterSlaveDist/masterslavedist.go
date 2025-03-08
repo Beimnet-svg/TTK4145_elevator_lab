@@ -16,7 +16,36 @@ var (
 	localElevID      int
 	Disconnected     = false
 	masterID         = 0
+	lastHeartbeat    [config.NumberElev]time.Time
+	heartbeatMu      sync.Mutex
 )
+
+func updateHeartbeat(elevID int) {
+	heartbeatMu.Lock()
+	defer heartbeatMu.Unlock()
+	lastHeartbeat[elevID] = time.Now()
+}
+
+func checkHeartbeats(setMaster chan bool) {
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+	for now := range ticker.C {
+		heartbeatMu.Lock()
+		for i := 0; i < config.NumberElev; i++ {
+			// Skip the local elevator if desired.
+			if i == localElevID {
+				continue
+			}
+			if now.Sub(lastHeartbeat[i]) > time.Duration(watchdogDuration)*time.Second {
+				// If we've not received a heartbeat in time, mark as inactive.
+				ActiveElev[i] = false
+				fmt.Println("Elevator", i, "timed out")
+				ChangeMaster(setMaster, i)
+			}
+		}
+		heartbeatMu.Unlock()
+	}
+}
 
 func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 	localElevID = localElev.ElevatorID
@@ -64,20 +93,17 @@ func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.
 
 func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster chan bool) {
 	mu.Lock()
-	defer mu.Unlock()
-
 	ActiveElev[elevID] = true
-	// Reset the watchdog timer for the sender.
-	startWatchdogTimer(elevID)
+	mu.Unlock()
 
-	// If we receive a heartbeat from another elevator, clear the disconnected flag.
-	// (This handles the edge case where the master started alone.)
+	updateHeartbeat(elevID)
+	fmt.Print("Active elevs", ActiveElev, "\n")
+
 	if elevID != localElev.ElevatorID && Disconnected {
 		fmt.Println("Received heartbeat from elevator", elevID, "— clearing disconnected flag.")
 		Disconnected = false
 	}
 
-	// Now, if the incoming message is a master message, resolve master conflict.
 	if master {
 		resolveMasterConflict(master, localElev, elevID, setMaster)
 	}

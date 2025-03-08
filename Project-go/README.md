@@ -18,6 +18,5 @@ Current bugs:
 
 - When pressing up and down in a floor, it removes both of them when reaching the floor
 - Some weird behaviour in master slave distributer that has to be debugged
-- On startup, there is a race condition when setting the elevator ID from OS args between the elevator_fsm and MSD
-
+- When starting the program, -> Running master, sets itself to disconnected and running as master -> Starts elev 1 both elevs sees eachother, but then watchdogtimer for both ID 0 and 2 runs out for 1 and it stops sending, forcing ID 0 to think it is alone again. 
 

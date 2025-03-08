@@ -11,7 +11,6 @@ import (
 )
 
 var (
-	//Define elevator type
 	e = elevio.Elevator{
 		CurrentFloor:     0,
 		Direction:        elevio.MD_Up,
@@ -55,6 +54,7 @@ func FSM_onFloorArrival(floor int, drv_button chan elevio.ButtonEvent) {
 func FSM_onMsgArrived(orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 
 	e.ActiveOrders = orders[e.ElevatorID]
+	//Store all active orders in the network in case of master failure
 	AllActiveOrders = orders
 
 	switch e.Behaviour {
@@ -77,6 +77,7 @@ func FSM_onMsgArrived(orders [config.NumberElev][config.NumberFloors][config.Num
 }
 
 func init_elevator(drv_floors chan int) {
+	// Take input argument from terminal as elevator ID
 	ID := os.Args[1]
 
 	fmt.Print("ID: ", ID)
@@ -98,11 +99,9 @@ func init_elevator(drv_floors chan int) {
 
 	elevio.SetDoorOpenLamp(false)
 	e.CurrentFloor = <-drv_floors
-	fmt.Println("After set dir")
 
 	e.Direction = elevio.MD_Stop
 	elevio.SetMotorDirection(elevio.MD_Stop)
-	fmt.Println("End of init")
 	elevio.SetFloorIndicator(e.CurrentFloor)
 
 }
@@ -111,6 +110,8 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 	if e.Behaviour == elevio.EB_DoorOpen && requests.ReqestShouldClearImmideatly(e, b.Floor, b.Button) {
 		timer.StartTimer(e.DoorOpenDuration)
 	} else {
+		// Ordercounter is used to ensure that new requests can be distinguised from old ones
+		// Instead of deleting requests, we only use the ones with counter values higher than the latest used in the order manager
 		OrderCounter += 1
 		e = elevio.AddToQueue(b.Button, b.Floor, e, OrderCounter)
 	}
@@ -119,23 +120,17 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 func FSM_Obstruction(obstruction bool) {
 	e.Obstruction = obstruction
 
-	// If the door is open and an obstruction occurs, restart the timer.
 	if e.Behaviour == elevio.EB_DoorOpen {
 		if obstruction {
-			fmt.Println("Obstruction detected while door is open. Keeping door open.")
 			timer.StartTimer(e.DoorOpenDuration)
 			elevio.SetDoorOpenLamp(true)
-		} else {
-			fmt.Println("Obstruction cleared while door is open.")
 		}
 	}
-	// When the door is closed, we don't need to do anything.
 }
 
 func FSM_doorTimeOut() {
 
 	if e.Obstruction && e.Behaviour == elevio.EB_DoorOpen {
-		fmt.Println("Door timeout triggered but obstruction is active; keeping door open.")
 		timer.StartTimer(e.DoorOpenDuration)
 		return
 	}
@@ -146,27 +141,18 @@ func FSM_doorTimeOut() {
 
 		switch e.Behaviour {
 		case elevio.EB_DoorOpen:
-			fmt.Print("Door is stuck in Eb_dooropen\n")
-
 			timer.StartTimer(e.DoorOpenDuration)
 
 		case elevio.EB_Moving:
-			fmt.Print("Door is stuck in Eb_moving1\n")
-
 			elevio.SetDoorOpenLamp(false)
 			elevio.SetMotorDirection(e.Direction)
-			fmt.Print("Door is stuck in Eb_moving  2\n")
 
 		case elevio.EB_Idle:
-			fmt.Print("Door is stuck in Eb_Idle\n")
 
 			elevio.SetDoorOpenLamp(false)
 			elevio.SetMotorDirection(e.Direction)
 
 		}
-
-	default:
-		fmt.Print("Door isnt opening for orders\n")
 
 	}
 
@@ -176,7 +162,6 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool,
 	msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 
-	fmt.Println("here")
 	init_elevator(drv_floors)
 
 	for {
@@ -197,7 +182,6 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 		case a := <-doorTimer:
 
 			if a {
-				fmt.Print("After if")
 				timer.StopTimer()
 				FSM_doorTimeOut()
 			}

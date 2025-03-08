@@ -37,6 +37,7 @@ func init() {
 	gob.Register(OrderMessage{})
 }
 
+// Make struct into byte slice
 func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	buf := bytes.NewBuffer(buffer)
 	dec := gob.NewDecoder(buf)
@@ -50,20 +51,21 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
 
-		// if masterslavedist.Disconnected {
-		// 	ordermanager.UpdateOrders(localElev, msgArrived)
-		// 	continue
-		// }
+		// If the elevator is percieved disconnected, we don't send any messages other than locally
+		if masterslavedist.Disconnected {
+			ordermanager.UpdateOrders(localElev, msgArrived)
+			continue
+		}
 
 		if localElev.Master {
-			orders := ordermanager.AllActiveOrders
+			orders := ordermanager.GetAllActiveOrder()
 			SenderMaster(localElev, orders)
+			ordermanager.UpdateOrders(localElev, msgArrived)
+
 		} else {
 			SenderSlave(localElev)
 		}
-		if localElev.Master {
-			ordermanager.UpdateOrders(localElev, msgArrived)
-		}
+
 	}
 }
 
@@ -79,20 +81,17 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 	buffer := make([]byte, 1024)
 
 	for {
-		// Wait for a message to be received
 		n, addrSender, err := conn.ReadFrom(buffer)
 		if err != nil {
 			log.Fatal("Error reading from connection:", err)
 		}
 
-		fmt.Print("Received message from ", addrSender, "\n")
-
 		// Ignore messages from localhost
-		if addrSender.String()[:9] == "127.0.0.1" {
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+		if localAddr.IP.Equal(addrSender.(*net.UDPAddr).IP) {
 			continue
 		}
 
-		// Decode the received message
 		msg, err := decodeMessage(buffer[:n])
 		if err != nil {
 			log.Fatal("Error decoding message:", err)
@@ -111,9 +110,7 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 	}
 }
 func SenderSlave(e elevio.Elevator) {
-	//Call this when we want to send a message
 
-	// Create an instance of the struct
 	message := OrderMessage{
 		Slave: &OrderMessageSlave{
 			ElevID: e.ElevatorID,
@@ -122,7 +119,6 @@ func SenderSlave(e elevio.Elevator) {
 		},
 	}
 
-	// Call this when we want to send a message
 	broadcastAddr := "255.255.255.255"
 	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
 	conn, err := net.DialUDP("udp", nil, destinationAddr)
@@ -143,9 +139,7 @@ func SenderSlave(e elevio.Elevator) {
 }
 
 func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
-	//Call this when we want to send a message
 
-	// Create an instance of the struct
 	message := OrderMessage{
 		Master: &OrderMessageMaster{
 			ElevID: e.ElevatorID,
@@ -153,8 +147,6 @@ func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 			Orders: orders,
 		},
 	}
-
-	fmt.Print("Sending message from master\n")
 
 	broadcastAddr := "255.255.255.255"
 	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
@@ -164,7 +156,6 @@ func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 	}
 	defer conn.Close()
 
-	//Master sending out orders to all elevators, including which elev should take it
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
 	err = enc.Encode(message)
@@ -173,6 +164,5 @@ func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 	}
 	content := buffer.Bytes()
 	conn.Write(content)
-	//Master sending out orders to all elevators, including which elev should take it
 
 }

@@ -132,7 +132,6 @@ func WatchdogTimer(setMaster chan bool) {
 				}
 			}
 		}
-		// Optionally, add a short sleep to avoid busy-looping.
 		time.Sleep(10 * time.Millisecond)
 	}
 }
@@ -151,11 +150,10 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 	if disconnectedElevID == masterID {
 		for j := 0; j < localElevID; j++ {
 			if ActiveElev[j] {
-				// A lower ID is still active; do not trigger an election.
 				return
 			}
 		}
-		// No lower active elevator found; signal master election exactly once.
+		// No lower active elevator found; signal master election.
 		setMaster <- true
 	}
 }

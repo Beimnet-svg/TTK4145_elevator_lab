@@ -3,6 +3,7 @@ package masterslavedist
 import (
 	config "Project-go/Config"
 	"Project-go/driver-go/elevio"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -14,39 +15,40 @@ var (
 	ActiveElev       [config.NumberElev]bool
 	localElevID      int
 	Disconnected     = false
-	masterID		 = 0
+	masterID         = 0
 )
 
 func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
-
 	localElevID = localElev.ElevatorID
 	ActiveElev[localElevID] = true
 
-	// Start the watchdog timers for all elevators, apart from the local one
+	// Start the watchdog timers for all elevators except the local one.
 	for i := 0; i < len(watchdogTimers); i++ {
 		if i != localElev.ElevatorID {
 			startWatchdogTimer(i)
 		}
 	}
 
-	// On startup we set ID 0 elevator as master, unless we already have a master on the internet sending messages
-	if localElevID == 0 {
-		timer := time.NewTimer(config.WatchdogDuration * time.Second)
-
-		for {
-			select {
-			case <-msgArrived:
-				return
-
-			case <-timer.C:
-				setMaster <- true
-				return
-
+	// All elevators start a timer to listen for an active master message.
+	timer := time.NewTimer(config.WatchdogDuration * time.Second)
+	select {
+	case <-msgArrived:
+		// A message arrived from another elevator, process it in AliveRecieved.
+		return
+	case <-timer.C:
+		// Timer expired with no message received; if this elevator is the highest priority, elect itself as master.
+		highestPriority := true
+		for j := 0; j < localElevID; j++ {
+			if ActiveElev[j] {
+				highestPriority = false
+				break
 			}
-
+		}
+		if highestPriority {
+			setMaster <- true
+			masterID = localElevID
 		}
 	}
-
 }
 
 func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.Elevator {
@@ -65,6 +67,7 @@ func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster
 	defer mu.Unlock()
 
 	ActiveElev[elevID] = true
+	fmt.Print("Alive recieved from: ", elevID, "\n")
 
 	// Reset the watchdog timer
 	startWatchdogTimer(elevID)
@@ -73,17 +76,21 @@ func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster
 
 }
 
-func resolveMasterConflict(master bool, localElev elevio.Elevator, elevID int, setMaster chan bool) {
-	// If we recieve a message from a master,
-	// and we are a master that has previously been disconnected, we are now slave
-	if localElev.Master && master {
-		if Disconnected {
-			setMaster <- false
-			Disconnected = false
-			masterID = elevID
+func resolveMasterConflict(isMsgMaster bool, localElev elevio.Elevator, senderElevID int, setMaster chan bool) {
+	// If the received message indicates a master and the sender has a higher priority (lower ID)
+	if isMsgMaster {
+		if localElev.Master && senderElevID < localElevID {
+			// If we're master but a higher-priority elevator is active, step down.
+			if Disconnected {
+				// If we had previously considered ourselves isolated, now we acknowledge a valid master.
+				setMaster <- false
+				Disconnected = false
+			}
+			masterID = senderElevID
+		} else if !localElev.Master {
+			// Simply update masterID if we are not master.
+			masterID = senderElevID
 		}
-	} else if master {
-		masterID = elevID
 	}
 }
 
@@ -95,10 +102,11 @@ func startWatchdogTimer(elevID int) {
 func WatchdogTimer(setMaster chan bool) {
 	for {
 		for i := 0; i < len(watchdogTimers); i++ {
-			if watchdogTimers[i] != nil {
+			if watchdogTimers[i] != nil && i != localElevID {
 				select {
 				case <-watchdogTimers[i].C:
 					ActiveElev[i] = false
+					fmt.Print("Elevator disc\n")
 
 					ChangeMaster(setMaster, i)
 
@@ -109,28 +117,27 @@ func WatchdogTimer(setMaster chan bool) {
 	}
 }
 
-func ChangeMaster(setMaster chan bool, i int) {
-
+func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 	numActiveElev := getNumActiveElev()
 
-	// If we percieve ourselves as the only active elevator, we are disconnected from the rest of the system
+	// If only this elevator is active, it should consider itself disconnected and take over.
 	if numActiveElev == 1 {
 		Disconnected = true
 		setMaster <- true
 		return
 	}
 
-	// If the disconnected elevator was the master, we need to elect a new master
-	if i == masterID{
-		for i := 0; i < localElevID; i++ {
-			if ActiveElev[i] {
+	// If the disconnected elevator was the master, check if any lower-priority elevator is still active.
+	if disconnectedElevID == masterID {
+		for j := 0; j < localElevID; j++ {
+			if ActiveElev[j] {
+				// A lower ID is still active; do not trigger an election.
 				return
 			}
-			setMaster <- true
 		}
+		// No lower active elevator found; signal master election exactly once.
+		setMaster <- true
 	}
-	
-
 }
 
 func getNumActiveElev() int {

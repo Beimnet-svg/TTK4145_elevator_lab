@@ -79,6 +79,20 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 	defer conn.Close()
 
 	buffer := make([]byte, 1024)
+	// Flush any pending messages in the buffer
+	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	for {
+		_, _, err := conn.ReadFrom(buffer)
+		if err != nil {
+			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
+				// No more messages to read, exit the flush loop.
+				break
+			}
+			log.Println("Error while flushing UDP buffer:", err)
+		}
+	}
+	// Remove the read deadline to resume normal operation
+	conn.SetReadDeadline(time.Time{})
 
 	for {
 		n, addrSender, err := conn.ReadFrom(buffer)

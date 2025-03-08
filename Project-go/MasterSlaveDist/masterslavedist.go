@@ -67,18 +67,20 @@ func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster
 	defer mu.Unlock()
 
 	ActiveElev[elevID] = true
-
-	// Reset the watchdog timer for the sender
+	// Reset the watchdog timer for the sender.
 	startWatchdogTimer(elevID)
 
-	// If we were previously marked as disconnected and we receive a message from another elevator,
-	// reset the disconnected flag.
-	if Disconnected && elevID != localElev.ElevatorID {
-		fmt.Println("Reconnecting: clearing disconnected flag.")
+	// If we receive a heartbeat from another elevator, clear the disconnected flag.
+	// (This handles the edge case where the master started alone.)
+	if elevID != localElev.ElevatorID && Disconnected {
+		fmt.Println("Received heartbeat from elevator", elevID, "— clearing disconnected flag.")
 		Disconnected = false
 	}
 
-	resolveMasterConflict(master, localElev, elevID, setMaster)
+	// Now, if the incoming message is a master message, resolve master conflict.
+	if master {
+		resolveMasterConflict(master, localElev, elevID, setMaster)
+	}
 }
 
 func resolveMasterConflict(isMsgMaster bool, localElev elevio.Elevator, senderElevID int, setMaster chan bool) {
@@ -100,25 +102,38 @@ func resolveMasterConflict(isMsgMaster bool, localElev elevio.Elevator, senderEl
 }
 
 func startWatchdogTimer(elevID int) {
-	watchdogTimers[elevID] = time.NewTimer(time.Duration(watchdogDuration) * time.Second)
+	duration := time.Duration(watchdogDuration) * time.Second
+	if watchdogTimers[elevID] != nil {
+		// Reset the timer; if it wasn't active, drain its channel.
+		if !watchdogTimers[elevID].Reset(duration) {
+			// Try to drain the channel if necessary.
+			select {
+			case <-watchdogTimers[elevID].C:
+			default:
+			}
+		}
+	} else {
+		watchdogTimers[elevID] = time.NewTimer(duration)
+	}
 }
 
 // If we have not recieved a message from an elevator within the watchdog duration, we assume it is disconnected
 func WatchdogTimer(setMaster chan bool) {
 	for {
 		for i := 0; i < len(watchdogTimers); i++ {
-			if watchdogTimers[i] != nil && i != localElevID {
+			if watchdogTimers[i] != nil {
 				select {
 				case <-watchdogTimers[i].C:
 					ActiveElev[i] = false
 					fmt.Print("Elevator disc\n")
-
 					ChangeMaster(setMaster, i)
-
+				default:
+					// Timer hasn't fired; continue to the next timer.
 				}
 			}
 		}
-
+		// Optionally, add a short sleep to avoid busy-looping.
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

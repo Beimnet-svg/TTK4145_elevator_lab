@@ -37,6 +37,12 @@ func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [confi
 		return
 	case <-timer.C:
 		// Timer expired with no message received; if this elevator is the highest priority, elect itself as master.
+		if localElevID == 0 {
+			setMaster <- true	
+			MasterID = localElevID
+			return
+		}
+
 		highestPriority := true
 		for j := 0; j < localElevID; j++ {
 			if ActiveElev[j] {

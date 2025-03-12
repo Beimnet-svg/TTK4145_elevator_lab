@@ -15,7 +15,7 @@ var (
 	ActiveElev       [config.NumberElev]bool
 	localElevID      int
 	Disconnected     = false
-	MasterID         = 0
+	MasterID         = -1
 )
 
 func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
@@ -34,12 +34,15 @@ func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [confi
 	select {
 	case <-msgArrived:
 		// A message arrived from another elevator, process it in AliveRecieved.
+		fmt.Println("Message recieved")
 		return
 	case <-timer.C:
 		// Timer expired with no message received; if this elevator is the highest priority, elect itself as master.
 		if localElevID == 0 {
 			setMaster <- true	
+			setMaster <- true
 			MasterID = localElevID
+			fmt.Printf("MasterID %d is now the master", MasterID);
 			return
 		}
 
@@ -51,6 +54,7 @@ func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [confi
 			}
 		}
 		if highestPriority {
+			setMaster <- true
 			setMaster <- true
 			MasterID = localElevID
 		}
@@ -72,6 +76,9 @@ func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster
 	mu.Lock()
 	defer mu.Unlock()
 
+	if MasterID == -1 && master {
+		MasterID = elevID
+	}
 	ActiveElev[elevID] = true
 	// Reset the watchdog timer for the sender.
 	startWatchdogTimer(elevID)
@@ -88,6 +95,7 @@ func resolveMasterConflict(isMsgMaster bool, senderElevID int, setMaster chan bo
 	if isMsgMaster {
 		if Disconnected {
 			// If we had previously considered ourselves isolated, now we acknowledge a valid master.
+			setMaster <- false
 			setMaster <- false
 			Disconnected = false
 			fmt.Println("Received heartbeat from elevator", senderElevID, "— clearing disconnected flag.")
@@ -134,16 +142,21 @@ func WatchdogTimer(setMaster chan bool) {
 func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 	numActiveElev := getNumActiveElev()
 
+	fmt.Println("Something is dead")
+
 	// If only this elevator is active, it should consider itself disconnected and take over.
 	if numActiveElev == 1 {
 		Disconnected = true
 		setMaster <- true
+		setMaster <- true
+		fmt.Println("Setting master")
 		return
 	}
 
 	// If the disconnected elevator was the master, check if any lower-priority elevator is still active.
 	if disconnectedElevID == MasterID {
 		if localElevID == 0 {
+			setMaster <- true
 			setMaster <- true
 			return
 		}
@@ -154,6 +167,7 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 			}
 		}
 		// No lower active elevator found; signal master election.
+		setMaster <- true
 		setMaster <- true
 	}
 }

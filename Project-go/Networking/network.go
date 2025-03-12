@@ -51,6 +51,7 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
 
+		fmt.Println(localElev.Master)
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
 			SenderMaster(localElev, orders)
@@ -110,12 +111,12 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 		localElev := elevator_fsm.GetElevator()
 
 		//If we got msg from same elevator id as we have locally, skip it
-		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
+		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID && localElev.Master {
 			ordermanager.UpdateOrders(msg.Slave.E, msgArrived)
 			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
 		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
-			if masterslavedist.MasterID == msg.Master.ElevID {
+			if masterslavedist.MasterID == msg.Master.ElevID || masterslavedist.MasterID==-1{
 				msgArrived <- msg.Master.Orders
 			}
 		}

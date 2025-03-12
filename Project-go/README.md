@@ -17,8 +17,7 @@ OrderManager -> This is where all the orders are being processed. When new butto
 Current bugs:
 
 - When pressing up and down in a floor, it removes both of them when reaching the floor
-- Some weird behaviour in master slave distributer that has to be debugged
 - When staring two elevators, killing master seems to update master, since ID 1 starts taking order from itself. but we dont get the print in the fsm.
-- Orders from slave arent being serviced.
 - Need a timer module for when the state of an elevator hasnt changed for a period of time, to indicate that the motor is dead. 
+- If we disconnect master, without other elevators assuming the master role, the disconnect flag on the master is never going to clear unless it dies. Will lead to bug when another elevator disconnects then reconnects, but shouldn't happen with 3 elevators 
 

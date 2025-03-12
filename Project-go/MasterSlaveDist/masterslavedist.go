@@ -70,13 +70,6 @@ func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster
 	// Reset the watchdog timer for the sender.
 	startWatchdogTimer(elevID)
 
-	// If we receive a heartbeat from another elevator, clear the disconnected flag.
-	// (This handles the edge case where the master started alone.)
-	if Disconnected {
-		fmt.Println("Received heartbeat from elevator", elevID, "— clearing disconnected flag.")
-		
-	}
-
 	// Now, if the incoming message is a master message, resolve master conflict.
 	if localElev.Master {
 		resolveMasterConflict(master, elevID, setMaster)
@@ -148,7 +141,7 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 			setMaster <- true
 			return
 		}
-		
+
 		for j := 0; j < localElevID; j++ {
 			if ActiveElev[j] {
 				return

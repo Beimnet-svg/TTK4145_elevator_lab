@@ -131,7 +131,6 @@ func SenderSlave(E elevio.Elevator) {
 			E:      E,
 		},
 	}
-	fmt.Println(message.Slave.E.Requests)
 
 	broadcastAddr := "255.255.255.255"
 	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")

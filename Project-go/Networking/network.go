@@ -51,12 +51,6 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
 
-		// If the elevator is percieved disconnected, we don't send any messages other than locally
-		if masterslavedist.Disconnected {
-			ordermanager.UpdateOrders(localElev, msgArrived)
-			continue
-		}
-
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
 			SenderMaster(localElev, orders)
@@ -121,7 +115,9 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
 		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
-			msgArrived <- msg.Master.Orders
+			if masterslavedist.MasterID == msg.Master.ElevID {
+				msgArrived <- msg.Master.Orders
+			}
 		}
 	}
 

@@ -15,7 +15,7 @@ var (
 	ActiveElev       [config.NumberElev]bool
 	localElevID      int
 	Disconnected     = false
-	masterID         = 0
+	MasterID         = 0
 )
 
 func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
@@ -46,7 +46,7 @@ func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [confi
 		}
 		if highestPriority {
 			setMaster <- true
-			masterID = localElevID
+			MasterID = localElevID
 		}
 	}
 }
@@ -72,33 +72,30 @@ func AliveRecieved(elevID int, master bool, localElev elevio.Elevator, setMaster
 
 	// If we receive a heartbeat from another elevator, clear the disconnected flag.
 	// (This handles the edge case where the master started alone.)
-	if elevID != localElev.ElevatorID && Disconnected {
+	if Disconnected {
 		fmt.Println("Received heartbeat from elevator", elevID, "— clearing disconnected flag.")
-		Disconnected = false
+		
 	}
 
 	// Now, if the incoming message is a master message, resolve master conflict.
-	if master {
-		resolveMasterConflict(master, localElev, elevID, setMaster)
+	if localElev.Master {
+		resolveMasterConflict(master, elevID, setMaster)
 	}
 }
 
-func resolveMasterConflict(isMsgMaster bool, localElev elevio.Elevator, senderElevID int, setMaster chan bool) {
+func resolveMasterConflict(isMsgMaster bool, senderElevID int, setMaster chan bool) {
 	// If the received message indicates a master and the sender has a higher priority (lower ID)
+	
 	if isMsgMaster {
-		if localElev.Master && senderElevID < localElevID {
-			// If we're master but a higher-priority elevator is active, step down.
-			if Disconnected {
-				// If we had previously considered ourselves isolated, now we acknowledge a valid master.
-				setMaster <- false
-				Disconnected = false
-			}
-			masterID = senderElevID
-		} else if !localElev.Master {
-			// Simply update masterID if we are not master.
-			masterID = senderElevID
+		if Disconnected {
+			// If we had previously considered ourselves isolated, now we acknowledge a valid master.
+			setMaster <- false
+			Disconnected = false
+			fmt.Println("Received heartbeat from elevator", senderElevID, "— clearing disconnected flag.")
+			MasterID = senderElevID
 		}
 	}
+	
 }
 
 func startWatchdogTimer(elevID int) {
@@ -132,7 +129,6 @@ func WatchdogTimer(setMaster chan bool) {
 				}
 			}
 		}
-		time.Sleep(10 * time.Millisecond)
 	}
 }
 
@@ -147,7 +143,12 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 	}
 
 	// If the disconnected elevator was the master, check if any lower-priority elevator is still active.
-	if disconnectedElevID == masterID {
+	if disconnectedElevID == MasterID {
+		if localElevID == 0 {
+			setMaster <- true
+			return
+		}
+		
 		for j := 0; j < localElevID; j++ {
 			if ActiveElev[j] {
 				return

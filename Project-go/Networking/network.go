@@ -17,7 +17,7 @@ import (
 type OrderMessageSlave struct {
 	ElevID int
 	Master bool
-	e      elevio.Elevator
+	E      elevio.Elevator
 }
 
 type OrderMessageMaster struct {
@@ -117,7 +117,7 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 
 		//If we got msg from same elevator id as we have locally, skip it
 		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
-			ordermanager.UpdateOrders(msg.Slave.e, msgArrived)
+			ordermanager.UpdateOrders(msg.Slave.E, msgArrived)
 			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
 		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
@@ -126,15 +126,16 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 	}
 
 }
-func SenderSlave(e elevio.Elevator) {
+func SenderSlave(E elevio.Elevator) {
 
 	message := OrderMessage{
 		Slave: &OrderMessageSlave{
-			ElevID: e.ElevatorID,
+			ElevID: E.ElevatorID,
 			Master: false,
-			e:      e,
+			E:      E,
 		},
 	}
+	fmt.Println(message.Slave.E.Requests)
 
 	broadcastAddr := "255.255.255.255"
 	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
@@ -155,11 +156,11 @@ func SenderSlave(e elevio.Elevator) {
 
 }
 
-func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 
 	message := OrderMessage{
 		Master: &OrderMessageMaster{
-			ElevID: e.ElevatorID,
+			ElevID: E.ElevatorID,
 			Master: true,
 			Orders: orders,
 		},

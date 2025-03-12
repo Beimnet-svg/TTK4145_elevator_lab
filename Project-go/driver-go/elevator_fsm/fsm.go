@@ -111,6 +111,7 @@ func FSM_onButtonPress(b elevio.ButtonEvent) {
 		// Instead of deleting requests, we only use the ones with counter values higher than the latest used in the order manager
 		OrderCounter += 1
 		e = elevio.AddToQueue(b.Button, b.Floor, e, OrderCounter)
+		fmt.Println(e.Requests)
 	}
 }
 

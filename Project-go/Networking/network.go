@@ -116,7 +116,8 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
 		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
-			if masterslavedist.MasterID == msg.Master.ElevID || masterslavedist.MasterID==-1{
+
+			if masterslavedist.MasterID == msg.Master.ElevID || masterslavedist.MasterID == -1 {
 				msgArrived <- msg.Master.Orders
 			}
 		}

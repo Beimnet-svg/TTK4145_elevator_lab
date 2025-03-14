@@ -159,17 +159,20 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 		if localElevID == 0 {
 			setMaster <- true
 			setMaster <- true
+			MasterID = localElevID
 			return
 		}
 
 		for j := 0; j < localElevID; j++ {
 			if ActiveElev[j] {
+				MasterID = -1
 				return
 			}
 		}
 		// No lower active elevator found; signal master election.
 		setMaster <- true
 		setMaster <- true
+		MasterID = localElevID
 	}
 }
 

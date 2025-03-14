@@ -114,6 +114,8 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID && localElev.Master {
 			ordermanager.UpdateOrders(msg.Slave.E, msgArrived)
 			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
+		} else if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
+			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
 		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
 

@@ -112,18 +112,28 @@ func RequestClearAtCurrentFloor(e elevio.Elevator, AllActiveOrders [config.Numbe
 		AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_Cab] = false
 		switch e.Direction {
 		case elevio.MD_Up:
-			if !(!requestsAbove(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]) {
+			if (!requestsAbove(e) && !AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]) {
 				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
 			} else {
 				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
 			}
 		case elevio.MD_Down:
-			if !(!requestsBelow(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]) {
+			if (!requestsBelow(e) && !AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]) {
 				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
 			} else {
 				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
 			}
 		case elevio.MD_Stop:
+			if(requestsBelow(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]){
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+			}else if(requestsAbove(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]){
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+			}else if (AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]){
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+
+			}else if (AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]){
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+			}
 		default:
 			AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
 			AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false

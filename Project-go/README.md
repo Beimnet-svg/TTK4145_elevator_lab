@@ -24,3 +24,6 @@ Current bugs:
 - If we start a new elevator on a already working network, it sometimes disconnects(?)
 - Sometimes on startup, an elevaor isnt recognising some of the elevators.
 
+Questions for TA:
+- When plugging out internet cable, it cant communicate with elevetorserver, when simulating total disconnect, will we still be connected to the elevator locally. 
+- Will you turn off the elevator box. 

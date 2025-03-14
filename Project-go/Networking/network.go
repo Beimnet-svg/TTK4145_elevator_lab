@@ -51,7 +51,9 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
 
-		fmt.Println(localElev.Master)
+		fmt.Print(masterslavedist.ActiveElev, "\n")
+		fmt.Print(localElev.Master, "\n")
+
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
 			SenderMaster(localElev, orders)
@@ -137,11 +139,27 @@ func SenderSlave(E elevio.Elevator) {
 	}
 
 	broadcastAddr := "255.255.255.255"
-	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
-	conn, err := net.DialUDP("udp", nil, destinationAddr)
-	if err != nil {
-		fmt.Println("Error dialing UDP:", err)
+	destinationAddr, err := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
+
+	
+	var conn *net.UDPConn
+	for {
+		// Try to establish the connection
+		conn, err = net.DialUDP("udp", nil, destinationAddr)
+		if err != nil {
+			fmt.Println("Error dialing UDP, retrying in 5 seconds:", err)
+			time.Sleep(1 * time.Second) // Retry every 5 seconds if there's a connection error
+			continue
+		}
+
+		// If connection is successful, break out of the loop
+		break
 	}
+
+
+
+
+
 	defer conn.Close()
 
 	var buffer bytes.Buffer
@@ -166,11 +184,24 @@ func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 	}
 
 	broadcastAddr := "255.255.255.255"
-	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
-	conn, err := net.DialUDP("udp", nil, destinationAddr)
-	if err != nil {
-		fmt.Println("Error dialing UDP:", err)
+	destinationAddr, err := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
+	
+
+	var conn *net.UDPConn
+	for {
+		// Try to establish the connection
+		conn, err = net.DialUDP("udp", nil, destinationAddr)
+		if err != nil {
+			fmt.Println("Error dialing UDP, retrying in 5 seconds:", err)
+			time.Sleep(1 * time.Second) // Retry every 5 seconds if there's a connection error
+			continue
+		}
+
+		// If connection is successful, break out of the loop
+		break
 	}
+
+
 	defer conn.Close()
 
 	var buffer bytes.Buffer

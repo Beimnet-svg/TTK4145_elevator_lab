@@ -22,4 +22,5 @@ Current bugs:
 - If we disconnect master, without other elevators assuming the master role, the disconnect flag on the master is never going to clear unless it dies. Will lead to bug when another elevator disconnects then reconnects, but shouldn't happen with 3 elevators 
 - When giving a request on a floor where a elevator already is, it does not clear it from requests
 - If we start a new elevator on a already working network, it sometimes disconnects(?)
+- Sometimes on startup, an elevaor isnt recognising some of the elevators.
 

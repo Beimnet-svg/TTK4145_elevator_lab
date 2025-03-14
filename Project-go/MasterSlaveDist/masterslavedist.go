@@ -122,13 +122,14 @@ func startWatchdogTimer(elevID int) {
 }
 
 // If we have not recieved a message from an elevator within the watchdog duration, we assume it is disconnected
-func WatchdogTimer(setMaster chan bool) {
+func WatchdogTimer(setMaster chan bool, elevDied chan int) {
 	for {
 		for i := 0; i < len(watchdogTimers); i++ {
 			if watchdogTimers[i] != nil {
 				select {
 				case <-watchdogTimers[i].C:
 					ActiveElev[i] = false
+					elevDied <- i
 					fmt.Print("Elevator disc", i, "\n")
 					ChangeMaster(setMaster, i)
 				default:

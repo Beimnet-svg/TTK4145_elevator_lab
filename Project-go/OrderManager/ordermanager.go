@@ -206,3 +206,12 @@ func ApplyBackupOrders(setMaster chan bool) {
 		}
 	}
 }
+
+func ResetOrderCounter(elevDied chan int) {
+	for {
+		select {
+		case a := <-elevDied:
+			orderCounter[a] = 0
+		}
+	}
+}

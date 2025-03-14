@@ -22,6 +22,7 @@ var drv_stop = make(chan bool)
 var doorTimer = make(chan bool)
 var msgArrived = make(chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool)
 var setMaster = make(chan bool)
+var elevDied = make(chan int)
 
 func main() {
 
@@ -42,8 +43,10 @@ func main() {
 	go networking.Receiver(msgArrived, setMaster)
 	go networking.Sender(msgArrived)
 
-	go masterslavedist.WatchdogTimer(setMaster)
+	go masterslavedist.WatchdogTimer(setMaster, elevDied)
 	go ordermanager.ApplyBackupOrders(setMaster)
+	go ordermanager.ResetOrderCounter(elevDied)
+
 
 	//Networking go routine
 	//Acceptence tests

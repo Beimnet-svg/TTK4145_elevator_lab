@@ -47,6 +47,14 @@ func GetAllActiveOrder() [config.NumberElev][config.NumberFloors][config.NumberB
 	return allActiveOrders
 }
 
+func GetOrderCounter() [config.NumberElev]int{
+	return orderCounter
+}
+
+func UpdateOrderCounter(newOrderCounter [config.NumberElev]int){
+	orderCounter = newOrderCounter
+}
+
 func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	newRequests := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
 
@@ -193,6 +201,7 @@ func ApplyBackupOrders(setMaster chan bool) {
 		case a := <-setMaster:
 			if a {
 				allActiveOrders = elevator_fsm.AllActiveOrders
+				fmt.Println(allActiveOrders)
 			}
 		}
 	}

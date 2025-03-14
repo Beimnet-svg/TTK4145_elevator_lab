@@ -189,7 +189,7 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 		case a := <-setMaster:
 			fmt.Print("Master has been set to: ", a, "\n")
 			e.Master = a
-
+			
 		}
 
 	}

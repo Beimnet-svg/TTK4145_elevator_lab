@@ -24,6 +24,7 @@ type OrderMessageMaster struct {
 	ElevID int
 	Master bool
 	Orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
+	OrderCounter [config.NumberElev]int
 }
 
 type OrderMessage struct {
@@ -119,8 +120,8 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 		} else if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
 		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
+			ordermanager.UpdateOrderCounter(msg.Master.OrderCounter)
 			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
-
 			if masterslavedist.MasterID == msg.Master.ElevID || masterslavedist.MasterID == -1 {
 				msgArrived <- msg.Master.Orders
 			}
@@ -180,6 +181,7 @@ func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 			ElevID: E.ElevatorID,
 			Master: true,
 			Orders: orders,
+			OrderCounter: ordermanager.GetOrderCounter(),
 		},
 	}
 

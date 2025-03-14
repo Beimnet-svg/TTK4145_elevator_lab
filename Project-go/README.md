@@ -17,13 +17,12 @@ OrderManager -> This is where all the orders are being processed. When new butto
 Current bugs:
 
 - When pressing up and down in a floor, it removes both of them when reaching the floor
-- When staring two elevators, killing master seems to update master, since ID 1 starts taking order from itself. but we dont get the print in the fsm.
 - Need a timer module for when the state of an elevator hasnt changed for a period of time, to indicate that the motor is dead. 
 - If we disconnect master, without other elevators assuming the master role, the disconnect flag on the master is never going to clear unless it dies. Will lead to bug when another elevator disconnects then reconnects, but shouldn't happen with 3 elevators 
-- When giving a request on a floor where a elevator already is, it does not clear it from requests
-- If we start a new elevator on a already working network, it sometimes disconnects(?)
-- Sometimes on startup, an elevaor isnt recognising some of the elevators.
+- There is a wierd bug somewhere were an elevator just stops moving, should be an acceptence test for if elevator hasnt moved for a certain amount of time, restart it. 
 
 Questions for TA:
 - When plugging out internet cable, it cant communicate with elevetorserver, when simulating total disconnect, will we still be connected to the elevator locally. 
 - Will you turn off the elevator box. 
+- Should all hall buttons light up when hall orders are being taken, or just light the hall order sfor the elevator taking them. Because now we will be lighting some hall lghts on some elevators and then removing it. 
+- When getting valus from one module to the next, should we use a GetFunction, or make the variable global, or send them on channels. 

@@ -43,15 +43,15 @@ type HRAInput struct {
 	States       map[string]HRAElevState `json:"states"`
 }
 
-func GetAllActiveOrder() [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{
+func GetAllActiveOrder() [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
 	return allActiveOrders
 }
 
-func GetOrderCounter() [config.NumberElev]int{
+func GetOrderCounter() [config.NumberElev]int {
 	return orderCounter
 }
 
-func UpdateOrderCounter(newOrderCounter [config.NumberElev]int){
+func UpdateOrderCounter(newOrderCounter [config.NumberElev]int) {
 	orderCounter = newOrderCounter
 }
 
@@ -67,13 +67,12 @@ func UpdateOrders(e elevio.Elevator, activeOrderChan chan [config.NumberElev][co
 	maxCounterValue := orderCounter[e.ElevatorID]
 
 	//If we have a new order we redistribute hall orders and set new order counter
-	if CheckIfNewOrders(e, &maxCounterValue, &newRequests) {
+	CheckIfNewOrders(e, &maxCounterValue, &newRequests)
 
-		aliveElevatorStates := masterslavedist.FetchAliveElevators(ElevState)
-		orderCounter[e.ElevatorID] = maxCounterValue
-		input, cabRequests := formatInput(aliveElevatorStates, allActiveOrders, newRequests)
-		allActiveOrders = assignRequests(input, cabRequests)
-	}
+	aliveElevatorStates := masterslavedist.FetchAliveElevators(ElevState)
+	orderCounter[e.ElevatorID] = maxCounterValue
+	input, cabRequests := formatInput(aliveElevatorStates, allActiveOrders, newRequests)
+	allActiveOrders = assignRequests(input, cabRequests)
 
 	//Send updated orders to all elevators
 	activeOrderChan <- allActiveOrders
@@ -190,7 +189,7 @@ func transformOutput(ret []byte, input HRAInput, cabRequests [config.NumberElev]
 
 	//Add cab orders to set of active orders
 	aliveElev := masterslavedist.AliveElev
-	for elevID := 0 ; elevID < config.NumberElev; elevID++ {
+	for elevID := 0; elevID < config.NumberElev; elevID++ {
 		if aliveElev[elevID] {
 			for floor := 0; floor < config.NumberFloors; floor++ {
 				newAllActiveOrders[elevID][floor][2] = cabRequests[elevID][floor]
@@ -208,7 +207,7 @@ func ApplyBackupOrders(setMaster chan bool, activeOrderChan chan [config.NumberE
 		case a := <-setMaster:
 			if a {
 				allActiveOrders = elevator_fsm.AllActiveOrders
-				activeOrderChan <- allActiveOrders
+				//activeOrderChan <- allActiveOrders
 				fmt.Println(allActiveOrders)
 			}
 		}

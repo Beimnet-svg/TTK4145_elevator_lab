@@ -37,6 +37,7 @@ func main() {
 
 	elevator_fsm.SetElevatorID(ID_e)
 
+	go elevator_fsm.Init_elevator(drv_floors)
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
 	go elevio.PollObstructionSwitch(drv_obstr)

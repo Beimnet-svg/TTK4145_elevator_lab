@@ -13,14 +13,14 @@ var (
 	e = elevio.Elevator{
 		CurrentFloor:     0,
 		Direction:        elevio.MD_Up,
-		Behaviour:        elevio.EB_Idle,
+		Behaviour:        elevio.EB_Moving,
 		Requests:         [config.NumberFloors][config.NumberBtn]int{},
 		ActiveOrders:     [config.NumberFloors][config.NumberBtn]bool{},
 		NumFloors:        config.NumberFloors,
 		DoorOpenDuration: config.DoorOpenDuration,
 		Master:           false,
 		Obstruction:      false,
-		Inactive:         false,
+		Inactive:         true,
 	}
 	OrderCounter = 0
 )
@@ -92,7 +92,7 @@ func FSM_onMsgArrived(orders [config.NumberElev][config.NumberFloors][config.Num
 	elevio.LightButtons(e)
 }
 
-func init_elevator(drv_floors chan int) {
+func Init_elevator(drv_floors chan int) {
 	// Take input argument from terminal as elevator ID
 
 	for a := 0; a < e.NumFloors; a++ {
@@ -112,6 +112,7 @@ func init_elevator(drv_floors chan int) {
 	e.CurrentFloor = <-drv_floors
 
 	e.Direction = elevio.MD_Stop
+	e.Behaviour = elevio.EB_Idle
 	elevio.SetMotorDirection(elevio.MD_Stop)
 	elevio.SetFloorIndicator(e.CurrentFloor)
 
@@ -179,8 +180,6 @@ func FSM_doorTimeOut(resetInactiveTimer chan int) {
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool,
 	activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool, elevInactive chan bool, resetInactiveTimer chan int) {
-
-	init_elevator(drv_floors)
 
 	for {
 		select {

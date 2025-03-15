@@ -20,9 +20,10 @@ Current bugs:
 - Need a timer module for when the state of an elevator hasnt changed for a period of time, to indicate that the motor is dead. 
 - If we disconnect master, without other elevators assuming the master role, the disconnect flag on the master is never going to clear unless it dies. Will lead to bug when another elevator disconnects then reconnects, but shouldn't happen with 3 elevators 
 - There is a wierd bug somewhere were an elevator just stops moving, should be an acceptence test for if elevator hasnt moved for a certain amount of time, restart it. 
+-All hall buttons should light up when there is an order there. 
+- Code quality: Instead of using setElevID in main, we can set config.ID and use that all over the place instead. 
 
 Questions for TA:
 - When plugging out internet cable, it cant communicate with elevetorserver, when simulating total disconnect, will we still be connected to the elevator locally. 
 - Will you turn off the elevator box. 
-- Should all hall buttons light up when hall orders are being taken, or just light the hall order sfor the elevator taking them. Because now we will be lighting some hall lghts on some elevators and then removing it. 
 - When getting valus from one module to the next, should we use a GetFunction, or make the variable global, or send them on channels. 

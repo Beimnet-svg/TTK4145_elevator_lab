@@ -55,6 +55,7 @@ type Elevator struct {
 	ElevatorID       int
 	Master           bool
 	Obstruction      bool
+	Inactive         bool
 }
 
 func Init(addr string, numFloors int) {

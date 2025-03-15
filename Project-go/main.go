@@ -24,6 +24,9 @@ var msgArrived = make(chan [config.NumberElev][config.NumberFloors][config.Numbe
 var setMaster = make(chan bool)
 var elevDied = make(chan int)
 
+var elevInactive = make(chan bool)
+var resetInactiveTimer = make(chan int)
+
 func main() {
 
 	elevio.Init("localhost:15657", config.NumberFloors)
@@ -39,21 +42,22 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 	go timer.PollTimer(doorTimer)
+	go elevator_fsm.CheckInactiveElev(resetInactiveTimer)
 
 	go networking.Receiver(msgArrived, setMaster)
 	go networking.Sender(msgArrived)
 
-	go masterslavedist.WatchdogTimer(setMaster, elevDied)
+	go masterslavedist.WatchdogTimer(setMaster, elevDied, elevInactive)
+	go masterslavedist.ResetInactiveTimer(resetInactiveTimer, elevInactive)
 	go ordermanager.ApplyBackupOrders(setMaster)
 	go ordermanager.ResetOrderCounter(elevDied)
-
 
 	//Networking go routine
 	//Acceptence tests
 	//1. test if door is closed before running
 
 	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr,
-		drv_stop, doorTimer, msgArrived, setMaster)
+		drv_stop, doorTimer, msgArrived, setMaster, elevInactive, resetInactiveTimer)
 
 	myelevator := elevator_fsm.GetElevator()
 	go masterslavedist.InitializeMasterSlaveDist(myelevator, msgArrived, setMaster)

@@ -21,10 +21,11 @@ type OrderMessageSlave struct {
 }
 
 type OrderMessageMaster struct {
-	ElevID int
-	Master bool
-	Orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
+	ElevID       int
+	Master       bool
+	Orders       [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 	OrderCounter [config.NumberElev]int
+	Inactive     bool
 }
 
 type OrderMessage struct {
@@ -53,7 +54,8 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 		localElev := elevator_fsm.GetElevator()
 
 		fmt.Print(masterslavedist.ActiveElev, "\n")
-		fmt.Print(localElev.Master, "\n")
+		fmt.Print(localElev.Inactive, "\n")
+		//fmt.Print(localElev.Master, "\n")
 
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
@@ -116,12 +118,12 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 		//If we got msg from same elevator id as we have locally, skip it
 		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID && localElev.Master {
 			ordermanager.UpdateOrders(msg.Slave.E, msgArrived)
-			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
+			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
 		} else if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
-			masterslavedist.AliveRecieved(msg.Slave.ElevID, msg.Slave.Master, localElev, setMaster)
+			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
 		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
 			ordermanager.UpdateOrderCounter(msg.Master.OrderCounter)
-			masterslavedist.AliveRecieved(msg.Master.ElevID, msg.Master.Master, localElev, setMaster)
+			masterslavedist.AliveRecievedFromMaster(msg.Master.ElevID, msg.Master.Inactive, localElev, setMaster)
 			if masterslavedist.MasterID == msg.Master.ElevID || masterslavedist.MasterID == -1 {
 				msgArrived <- msg.Master.Orders
 			}
@@ -142,7 +144,6 @@ func SenderSlave(E elevio.Elevator) {
 	broadcastAddr := "255.255.255.255"
 	destinationAddr, err := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
 
-	
 	var conn *net.UDPConn
 	for {
 		// Try to establish the connection
@@ -156,10 +157,6 @@ func SenderSlave(E elevio.Elevator) {
 		// If connection is successful, break out of the loop
 		break
 	}
-
-
-
-
 
 	defer conn.Close()
 
@@ -178,16 +175,16 @@ func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 
 	message := OrderMessage{
 		Master: &OrderMessageMaster{
-			ElevID: E.ElevatorID,
-			Master: true,
-			Orders: orders,
+			ElevID:       E.ElevatorID,
+			Master:       true,
+			Orders:       orders,
 			OrderCounter: ordermanager.GetOrderCounter(),
+			Inactive:     E.Inactive,
 		},
 	}
 
 	broadcastAddr := "255.255.255.255"
 	destinationAddr, err := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
-	
 
 	var conn *net.UDPConn
 	for {
@@ -202,7 +199,6 @@ func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 		// If connection is successful, break out of the loop
 		break
 	}
-
 
 	defer conn.Close()
 

@@ -6,4 +6,5 @@ const (
 	NumberBtn        = 3
 	WatchdogDuration = 2
 	DoorOpenDuration = 3
+	InactiveDuration = 10
 )

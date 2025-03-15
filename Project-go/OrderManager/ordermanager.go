@@ -188,12 +188,9 @@ func transformOutput(ret []byte, input HRAInput, cabRequests [config.NumberElev]
 	}
 
 	//Add cab orders to set of active orders
-	aliveElev := masterslavedist.AliveElev
 	for elevID := 0; elevID < config.NumberElev; elevID++ {
-		if aliveElev[elevID] {
-			for floor := 0; floor < config.NumberFloors; floor++ {
-				newAllActiveOrders[elevID][floor][2] = cabRequests[elevID][floor]
-			}
+		for floor := 0; floor < config.NumberFloors; floor++ {
+			newAllActiveOrders[elevID][floor][2] = cabRequests[elevID][floor]
 		}
 	}
 

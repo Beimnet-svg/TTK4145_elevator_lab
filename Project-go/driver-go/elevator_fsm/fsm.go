@@ -101,10 +101,7 @@ func Init_elevator(drv_floors chan int) {
 		}
 	}
 
-	fmt.Println("After loop")
-
 	e.Direction = elevio.MD_Up
-	fmt.Println(e.Direction)
 
 	elevio.SetMotorDirection(e.Direction)
 
@@ -208,7 +205,6 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 
 			FSM_onMsgArrived(a, resetInactiveTimer)
 		case a := <-setMaster:
-			fmt.Print("Master has been set to: ", a, "\n")
 			e.Master = a
 
 		}

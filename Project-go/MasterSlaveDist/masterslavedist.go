@@ -8,13 +8,13 @@ import (
 )
 
 var (
-	watchdogTimers [config.NumberElev]*time.Timer
+	watchdogTimers   [config.NumberElev]*time.Timer
 	checkMasterTimer *time.Timer
-	ActiveElev     [config.NumberElev]bool
-	AliveElev      [config.NumberElev]bool
-	localElevID    int
-	Disconnected   = false
-	MasterID       = -1
+	ActiveElev       [config.NumberElev]bool
+	AliveElev        [config.NumberElev]bool
+	localElevID      int
+	Disconnected     = false
+	MasterID         = -1
 )
 
 func InitializeMasterSlaveDist(localElev elevio.Elevator, activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
@@ -37,7 +37,6 @@ func InitializeMasterSlaveDist(localElev elevio.Elevator, activeOrdersArrived ch
 	select {
 	case <-activeOrdersArrived:
 		// A message arrived from another elevator, process it in AliveRecieved.
-		fmt.Println("Message recieved")
 		return
 	case <-timer.C:
 		// Timer expired with no message received; if this elevator is the highest priority, elect itself as master.
@@ -76,12 +75,13 @@ func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.
 }
 
 func AliveRecievedFromSlave(elevID int, recievedE elevio.Elevator, setMaster chan bool) {
-	
+
 	if MasterID == -1 {
 		MasterID = elevID
 	}
 
-	if Disconnected && checkMasterTimer == nil{
+	if Disconnected && checkMasterTimer == nil {
+		fmt.Println("Starting checkMasterTimer")
 		checkMasterTimer = time.NewTimer(config.WatchdogDuration * time.Second)
 	}
 
@@ -97,7 +97,7 @@ func AliveRecievedFromSlave(elevID int, recievedE elevio.Elevator, setMaster cha
 }
 
 func AliveRecievedFromMaster(elevID int, Inactive bool, localElev elevio.Elevator, setMaster chan bool) {
-	
+
 	if MasterID == -1 {
 		MasterID = elevID
 	}
@@ -133,8 +133,8 @@ func resolveMasterConflict(senderElevID int, setMaster chan bool) {
 
 }
 
-func CheckMasterTimerTimeout(){
-	
+func CheckMasterTimerTimeout() {
+
 	for {
 		if checkMasterTimer == nil {
 			return
@@ -207,14 +207,11 @@ func WatchdogTimer(setMaster chan bool, elevDied chan int, elevInactive chan boo
 func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 	numActiveElev := getNumActiveElev()
 
-	fmt.Println("Something is dead")
-
 	// If only this elevator is active, it should consider itself disconnected and take over.
 	if numActiveElev == 1 {
 		Disconnected = true
 		setMaster <- true
 		setMaster <- true
-		fmt.Println("Setting master")
 		return
 	}
 

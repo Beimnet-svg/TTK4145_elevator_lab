@@ -204,8 +204,6 @@ func ApplyBackupOrders(setMaster chan bool, activeOrderChan chan [config.NumberE
 		case a := <-setMaster:
 			if a {
 				allActiveOrders = elevator_fsm.AllActiveOrders
-				//activeOrderChan <- allActiveOrders
-				fmt.Println(allActiveOrders)
 			}
 		}
 	}

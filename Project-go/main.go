@@ -7,7 +7,6 @@ import (
 	ordermanager "Project-go/OrderManager"
 	timer "Project-go/driver-go/Timer"
 	"Project-go/driver-go/elevator_fsm"
-	"fmt"
 	"os"
 	"strconv"
 
@@ -32,7 +31,6 @@ func main() {
 	elevio.Init("localhost:15657", config.NumberFloors)
 	ID := os.Args[1]
 
-	fmt.Print("ID: ", ID)
 	ID_e, _ := strconv.Atoi(ID)
 
 	elevator_fsm.SetElevatorID(ID_e)

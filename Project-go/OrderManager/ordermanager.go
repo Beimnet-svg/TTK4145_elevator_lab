@@ -55,7 +55,7 @@ func UpdateOrderCounter(newOrderCounter [config.NumberElev]int){
 	orderCounter = newOrderCounter
 }
 
-func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+func UpdateOrders(e elevio.Elevator, activeOrderChan chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	newRequests := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
 
 	ElevState[e.ElevatorID] = e
@@ -76,7 +76,7 @@ func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.Nu
 	}
 
 	//Send updated orders to all elevators
-	receiver <- allActiveOrders
+	activeOrderChan <- allActiveOrders
 }
 
 func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int, NewRequests *[config.NumberElev][config.NumberFloors][config.NumberBtn]bool) bool {
@@ -202,12 +202,13 @@ func transformOutput(ret []byte, input HRAInput, cabRequests [config.NumberElev]
 }
 
 // Apply backup to new master
-func ApplyBackupOrders(setMaster chan bool) {
+func ApplyBackupOrders(setMaster chan bool, activeOrderChan chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	for {
 		select {
 		case a := <-setMaster:
 			if a {
 				allActiveOrders = elevator_fsm.AllActiveOrders
+				activeOrderChan <- allActiveOrders
 				fmt.Println(allActiveOrders)
 			}
 		}

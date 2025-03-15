@@ -48,7 +48,7 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	return &message, err
 }
 
-func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
@@ -60,7 +60,7 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
 			SenderMaster(localElev, orders)
-			ordermanager.UpdateOrders(localElev, msgArrived)
+			ordermanager.UpdateOrders(localElev, activeOrdersArrived)
 
 		} else {
 			SenderSlave(localElev)
@@ -69,7 +69,7 @@ func Sender(msgArrived chan [config.NumberElev][config.NumberFloors][config.Numb
 	}
 }
 
-func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
+func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 	// Listen for incoming UDP packets on port 20007
 	localAdress, _ := net.ResolveUDPAddr("udp", ":20007")
 	conn, err := net.ListenUDP("udp", localAdress)
@@ -117,7 +117,7 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 
 		//If we got msg from same elevator id as we have locally, skip it
 		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID && localElev.Master {
-			ordermanager.UpdateOrders(msg.Slave.E, msgArrived)
+			ordermanager.UpdateOrders(msg.Slave.E, activeOrdersArrived)
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
 		} else if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
@@ -125,7 +125,7 @@ func Receiver(msgArrived chan [config.NumberElev][config.NumberFloors][config.Nu
 			ordermanager.UpdateOrderCounter(msg.Master.OrderCounter)
 			masterslavedist.AliveRecievedFromMaster(msg.Master.ElevID, msg.Master.Inactive, localElev, setMaster)
 			if masterslavedist.MasterID == msg.Master.ElevID || masterslavedist.MasterID == -1 {
-				msgArrived <- msg.Master.Orders
+				activeOrdersArrived <- msg.Master.Orders
 			}
 		}
 	}

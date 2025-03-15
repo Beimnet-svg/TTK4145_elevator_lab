@@ -178,7 +178,7 @@ func FSM_doorTimeOut(resetInactiveTimer chan int) {
 
 func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	drv_obstr chan bool, drv_stop chan bool, doorTimer chan bool,
-	msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool, elevInactive chan bool, resetInactiveTimer chan int) {
+	activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool, elevInactive chan bool, resetInactiveTimer chan int) {
 
 	init_elevator(drv_floors)
 
@@ -205,7 +205,7 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 			}
 		case a := <-elevInactive:
 			e.Inactive = a
-		case a := <-msgArrived:
+		case a := <-activeOrdersArrived:
 
 			FSM_onMsgArrived(a, resetInactiveTimer)
 		case a := <-setMaster:

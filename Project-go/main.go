@@ -20,7 +20,7 @@ var drv_obstr = make(chan bool)
 var drv_stop = make(chan bool)
 
 var doorTimer = make(chan bool)
-var msgArrived = make(chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool)
+var activeOrdersArrived = make(chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool)
 var setMaster = make(chan bool)
 var elevDied = make(chan int)
 
@@ -44,12 +44,12 @@ func main() {
 	go timer.PollTimer(doorTimer)
 	go elevator_fsm.CheckInactiveElev(resetInactiveTimer)
 
-	go networking.Receiver(msgArrived, setMaster)
-	go networking.Sender(msgArrived)
+	go networking.Receiver(activeOrdersArrived, setMaster)
+	go networking.Sender(activeOrdersArrived)
 
 	go masterslavedist.WatchdogTimer(setMaster, elevDied, elevInactive)
 	go masterslavedist.ResetInactiveTimer(resetInactiveTimer, elevInactive)
-	go ordermanager.ApplyBackupOrders(setMaster)
+	go ordermanager.ApplyBackupOrders(setMaster, activeOrdersArrived)
 	go ordermanager.ResetOrderCounter(elevDied)
 
 	//Networking go routine
@@ -57,10 +57,10 @@ func main() {
 	//1. test if door is closed before running
 
 	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr,
-		drv_stop, doorTimer, msgArrived, setMaster, elevInactive, resetInactiveTimer)
+		drv_stop, doorTimer, activeOrdersArrived, setMaster, elevInactive, resetInactiveTimer)
 
 	myelevator := elevator_fsm.GetElevator()
-	go masterslavedist.InitializeMasterSlaveDist(myelevator, msgArrived, setMaster)
+	go masterslavedist.InitializeMasterSlaveDist(myelevator, activeOrdersArrived, setMaster)
 
 	for {
 

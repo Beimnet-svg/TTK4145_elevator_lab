@@ -16,7 +16,7 @@ var (
 	MasterID       = -1
 )
 
-func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
+func InitializeMasterSlaveDist(localElev elevio.Elevator, activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 	localElevID = localElev.ElevatorID
 	ActiveElev[localElevID] = true
 	AliveElev[localElevID] = true
@@ -34,7 +34,7 @@ func InitializeMasterSlaveDist(localElev elevio.Elevator, msgArrived chan [confi
 	// All elevators start a timer to listen for an active master message.
 	timer := time.NewTimer(config.WatchdogDuration * time.Second)
 	select {
-	case <-msgArrived:
+	case <-activeOrdersArrived:
 		// A message arrived from another elevator, process it in AliveRecieved.
 		fmt.Println("Message recieved")
 		return

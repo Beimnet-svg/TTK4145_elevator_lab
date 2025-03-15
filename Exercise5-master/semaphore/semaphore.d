@@ -53,6 +53,7 @@ class Resource(T) {
         } else {
             mtx.notify();
         }
+        value=v;
     }
 }
 

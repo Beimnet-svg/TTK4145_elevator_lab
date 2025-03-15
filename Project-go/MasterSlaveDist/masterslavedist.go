@@ -134,7 +134,11 @@ func resolveMasterConflict(senderElevID int, setMaster chan bool) {
 }
 
 func CheckMasterTimerTimeout(){
+	
 	for {
+		if checkMasterTimer == nil {
+			return
+		}
 		select {
 		case <-checkMasterTimer.C:
 			Disconnected = false
@@ -163,7 +167,6 @@ func ResetInactiveTimer(resetInactiveElev chan int, elevInactive chan bool) {
 	for {
 		select {
 		case <-resetInactiveElev:
-			fmt.Println("Resetting inactive timer")
 			startWatchdogTimer(localElevID, config.InactiveDuration)
 			ActiveElev[localElevID] = true
 			elevInactive <- false

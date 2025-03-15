@@ -76,10 +76,6 @@ func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.
 
 func AliveRecievedFromSlave(elevID int, recievedE elevio.Elevator, setMaster chan bool) {
 
-	if MasterID == -1 {
-		MasterID = elevID
-	}
-
 	if Disconnected && checkMasterTimer == nil {
 		fmt.Println("Starting checkMasterTimer")
 		checkMasterTimer = time.NewTimer(config.WatchdogDuration * time.Second)
@@ -137,7 +133,7 @@ func CheckMasterTimerTimeout() {
 
 	for {
 		if checkMasterTimer == nil {
-			return
+			continue
 		}
 		select {
 		case <-checkMasterTimer.C:

@@ -71,8 +71,8 @@ func UpdateOrders(e elevio.Elevator, receiver chan [config.NumberElev][config.Nu
 
 		aliveElevatorStates := masterslavedist.FetchAliveElevators(ElevState)
 		orderCounter[e.ElevatorID] = maxCounterValue
-		input := formatInput(aliveElevatorStates, allActiveOrders, newRequests)
-		allActiveOrders = assignRequests(input)
+		input, cabRequests := formatInput(aliveElevatorStates, allActiveOrders, newRequests)
+		allActiveOrders = assignRequests(input, cabRequests)
 	}
 
 	//Send updated orders to all elevators
@@ -100,7 +100,7 @@ func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int, NewRequests *[con
 
 // Format input to be used in the cost function
 func formatInput(elevators []elevio.Elevator, allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool,
-	newRequests [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) HRAInput {
+	newRequests [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) (HRAInput, [config.NumberElev][]bool) {
 
 	hallRequests := make([][2]bool, config.NumberFloors)
 	cabRequests := [config.NumberElev][]bool{}
@@ -137,10 +137,10 @@ func formatInput(elevators []elevio.Elevator, allActiveOrders [config.NumberElev
 			CabRequests: cabRequests[e.ElevatorID][:],
 		}
 	}
-	return input
+	return input, cabRequests
 }
 
-func assignRequests(input HRAInput) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
+func assignRequests(input HRAInput, cabRequests [config.NumberElev][]bool) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
 
 	hraExecutable := ""
 	switch runtime.GOOS {
@@ -163,12 +163,12 @@ func assignRequests(input HRAInput) [config.NumberElev][config.NumberFloors][con
 		fmt.Println(string(ret))
 	}
 
-	return transformOutput(ret, input)
+	return transformOutput(ret, input, cabRequests)
 
 }
 
 // Transform the output from the cost function to a format that can be used in the ordermanager
-func transformOutput(ret []byte, input HRAInput) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
+func transformOutput(ret []byte, input HRAInput, cabRequests [config.NumberElev][]bool) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
 
 	tempOutput := new(map[string][][2]bool)
 	newAllActiveOrders := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
@@ -184,11 +184,18 @@ func transformOutput(ret []byte, input HRAInput) [config.NumberElev][config.Numb
 				//Add hall orders to set of active orders
 				newAllActiveOrders[elevatorID][i][j] = orders[i][j]
 			}
-			//Add cab orders to set of active orders
-			newAllActiveOrders[elevatorID][i][2] = input.States[ID].CabRequests[i]
-
 		}
 
+	}
+
+	//Add cab orders to set of active orders
+	aliveElev := masterslavedist.AliveElev
+	for elevID := 0 ; elevID < config.NumberElev; elevID++ {
+		if aliveElev[elevID] {
+			for floor := 0; floor < config.NumberFloors; floor++ {
+				newAllActiveOrders[elevID][floor][2] = cabRequests[elevID][floor]
+			}
+		}
 	}
 
 	return newAllActiveOrders

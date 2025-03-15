@@ -53,10 +53,6 @@ func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][co
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
 
-		fmt.Print(masterslavedist.ActiveElev, "\n")
-		fmt.Print(localElev.Inactive, "\n")
-		//fmt.Print(localElev.Master, "\n")
-
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
 			SenderMaster(localElev, orders)
@@ -66,6 +62,18 @@ func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][co
 			SenderSlave(localElev)
 		}
 
+	}
+}
+
+func Print() {
+	ticker := time.NewTicker(1 * time.Second)
+	for range ticker.C {
+
+		localElev := elevator_fsm.GetElevator()
+		fmt.Print(masterslavedist.ActiveElev, "\n")
+		fmt.Print(localElev.Master, "\n")
+		fmt.Print(masterslavedist.MasterID, "\n")
+		fmt.Print(masterslavedist.Disconnected, "\n")
 	}
 }
 

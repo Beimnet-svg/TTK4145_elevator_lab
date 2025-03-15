@@ -54,6 +54,8 @@ func main() {
 	go ordermanager.ApplyBackupOrders(setMaster, activeOrdersArrived)
 	go ordermanager.ResetOrderCounter(elevDied)
 
+	go networking.Print()
+
 	//Networking go routine
 	//Acceptence tests
 	//1. test if door is closed before running

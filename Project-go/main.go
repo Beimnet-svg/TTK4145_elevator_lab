@@ -50,6 +50,7 @@ func main() {
 
 	go masterslavedist.WatchdogTimer(setMaster, elevDied, elevInactive)
 	go masterslavedist.ResetInactiveTimer(resetInactiveTimer, elevInactive)
+	go masterslavedist.CheckMasterTimerTimeout()
 	go ordermanager.ApplyBackupOrders(setMaster, activeOrdersArrived)
 	go ordermanager.ResetOrderCounter(elevDied)
 

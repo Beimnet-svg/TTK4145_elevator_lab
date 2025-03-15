@@ -9,6 +9,7 @@ import (
 
 var (
 	watchdogTimers [config.NumberElev]*time.Timer
+	checkMasterTimer *time.Timer
 	ActiveElev     [config.NumberElev]bool
 	AliveElev      [config.NumberElev]bool
 	localElevID    int
@@ -75,9 +76,13 @@ func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.
 }
 
 func AliveRecievedFromSlave(elevID int, recievedE elevio.Elevator, setMaster chan bool) {
-
+	
 	if MasterID == -1 {
 		MasterID = elevID
+	}
+
+	if Disconnected && checkMasterTimer == nil{
+		checkMasterTimer = time.NewTimer(config.WatchdogDuration * time.Second)
 	}
 
 	if recievedE.Inactive {
@@ -92,6 +97,7 @@ func AliveRecievedFromSlave(elevID int, recievedE elevio.Elevator, setMaster cha
 }
 
 func AliveRecievedFromMaster(elevID int, Inactive bool, localElev elevio.Elevator, setMaster chan bool) {
+	
 	if MasterID == -1 {
 		MasterID = elevID
 	}
@@ -114,17 +120,27 @@ func AliveRecievedFromMaster(elevID int, Inactive bool, localElev elevio.Elevato
 }
 
 func resolveMasterConflict(senderElevID int, setMaster chan bool) {
-	// If the received message indicates a master and the sender has a higher priority (lower ID)
 
 	if Disconnected {
 		// If we had previously considered ourselves isolated, now we acknowledge a valid master.
 		setMaster <- false
 		setMaster <- false
 		Disconnected = false
+		checkMasterTimer = nil
 		fmt.Println("Received heartbeat from elevator", senderElevID, "— clearing disconnected flag.")
 		MasterID = senderElevID
 	}
 
+}
+
+func CheckMasterTimerTimeout(){
+	for {
+		select {
+		case <-checkMasterTimer.C:
+			Disconnected = false
+			checkMasterTimer = nil
+		}
+	}
 }
 
 func startWatchdogTimer(elevID int, durationTime int) {

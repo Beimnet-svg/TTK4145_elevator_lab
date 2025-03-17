@@ -25,6 +25,7 @@ var elevDied = make(chan int)
 
 var elevInactive = make(chan bool)
 var resetInactiveTimer = make(chan int)
+var flushConnChan = make(chan int)
 
 func main() {
 
@@ -43,8 +44,8 @@ func main() {
 	go timer.PollTimer(doorTimer)
 	go elevator_fsm.CheckInactiveElev(resetInactiveTimer)
 
-	go networking.Receiver(activeOrdersArrived, setMaster)
-	go networking.Sender(activeOrdersArrived)
+	go networking.Receiver(activeOrdersArrived, setMaster, flushConnChan)
+	go networking.Sender(activeOrdersArrived, flushConnChan)
 
 	go masterslavedist.WatchdogTimer(setMaster, elevDied, elevInactive)
 	go masterslavedist.ResetInactiveTimer(resetInactiveTimer, elevInactive)

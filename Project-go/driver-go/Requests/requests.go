@@ -27,7 +27,6 @@ func RequestShouldStop(e elevio.Elevator) bool {
 	return false
 }
 
-// Helper function to check if there's a request at the current floor
 func hasRequestAtFloor(e elevio.Elevator) bool {
 	for btn := 0; btn < config.NumberBtn; btn++ {
 		if e.ActiveOrders[e.CurrentFloor][btn] {
@@ -39,7 +38,6 @@ func hasRequestAtFloor(e elevio.Elevator) bool {
 }
 
 func requestsAbove(e elevio.Elevator) bool {
-	// Iterate from floor `e.CurrentFloor` to the top floor to check if there's any request above `e.CurrentFloor`
 	for a := e.CurrentFloor + 1; a < e.NumFloors; a++ {
 		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {
 			if e.ActiveOrders[a][i] {
@@ -51,7 +49,6 @@ func requestsAbove(e elevio.Elevator) bool {
 }
 
 func requestsBelow(e elevio.Elevator) bool {
-	// Iterate from floor 0 to `e.CurrentFloor` to check if there's any request below `e.CurrentFloor`
 	for a := 0; a < e.CurrentFloor; a++ {
 		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {
 			if e.ActiveOrders[a][i] {
@@ -109,23 +106,34 @@ func ReqestShouldClearImmideatly(e elevio.Elevator, floor int, b elevio.ButtonTy
 	return false
 }
 
-func RequestClearAtCurrentFloor(e elevio.Elevator, AllActiveOrders [3][4][3]bool) [3][4][3]bool {
+// Removing orders from allActiveOrders in the ordermanager based on the elevator's current floor and direction. Used in the ordermanager
+func RequestClearAtCurrentFloor(e elevio.Elevator, AllActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
 	if e.Behaviour == elevio.EB_DoorOpen {
 		AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_Cab] = false
 		switch e.Direction {
 		case elevio.MD_Up:
-			if !(!requestsAbove(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]) {
+			if (!requestsAbove(e) && !AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]) {
 				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
 			} else {
 				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
 			}
 		case elevio.MD_Down:
-			if !(!requestsBelow(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]) {
+			if (!requestsBelow(e) && !AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]) {
 				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
 			} else {
 				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
 			}
 		case elevio.MD_Stop:
+			if(requestsBelow(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]){
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+			}else if(requestsAbove(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]){
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+			}else if (AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]){
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+
+			}else if (AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]){
+				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+			}
 		default:
 			AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
 			AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false

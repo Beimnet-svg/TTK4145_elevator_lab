@@ -216,6 +216,7 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 						}
 					}
 				}
+				fmt.Println("Requests", e.Requests)
 			}
 		}
 	}

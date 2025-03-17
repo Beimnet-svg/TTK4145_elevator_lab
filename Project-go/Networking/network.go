@@ -74,6 +74,8 @@ func Print() {
 		fmt.Print("Master:", localElev.Master, "\n")
 		fmt.Print("MasterID: ", masterslavedist.MasterID, "\n")
 		fmt.Print("Disconnected: ", masterslavedist.Disconnected, "\n")
+		fmt.Print(("Ordercounter: "), ordermanager.GetOrderCounter(), "\n")
+		fmt.Print("All active orders: ", ordermanager.GetAllActiveOrder(), "\n")
 	}
 }
 
@@ -119,14 +121,15 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 
 		//If we got msg from same elevator id as we have locally, skip it
 		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID && localElev.Master {
+			fmt.Println("Recieved request from", msg.Slave.ElevID, "with request", msg.Slave.E.Requests)
 			ordermanager.UpdateOrders(msg.Slave.E, activeOrdersArrived)
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
 		} else if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
-		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
-			ordermanager.UpdateOrderCounter(msg.Master.OrderCounter)
+		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {		
 			masterslavedist.AliveRecievedFromMaster(msg.Master.ElevID, msg.Master.Inactive, localElev, setMaster)
 			if masterslavedist.MasterID == msg.Master.ElevID || masterslavedist.MasterID == -1 {
+				ordermanager.UpdateOrderCounter(msg.Master.OrderCounter)
 				activeOrdersArrived <- msg.Master.Orders
 			}
 		}

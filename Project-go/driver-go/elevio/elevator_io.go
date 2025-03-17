@@ -93,14 +93,22 @@ func SetStopLamp(value bool) {
 	write([4]byte{5, toByte(value), 0, 0})
 }
 
-func LightButtons(e Elevator) {
-	for a := 0; a < e.NumFloors; a++ {
-		for i := ButtonType(0); i <= ButtonType(2); i++ {
-			if e.ActiveOrders[a][i] == true {
-				SetButtonLamp(i, a, true)
-			} else {
-				SetButtonLamp(i, a, false)
+func LightButtons(AllActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, elevID int) {
+
+	for floor := 0; floor < config.NumberFloors; floor++ {
+		for button := ButtonType(0); button <= ButtonType(1); button++ {
+			for elev := 0; elev < config.NumberElev; elev++ {
+				if AllActiveOrders[elev][floor][button] {
+					SetButtonLamp(button, floor, true)
+				} else {
+					SetButtonLamp(button, floor, false)
+				}
 			}
+		}
+		if AllActiveOrders[elevID][floor][ButtonType(2)] {
+			SetButtonLamp(ButtonType(2), floor, true)
+		} else {
+			SetButtonLamp(ButtonType(2), floor, false)
 		}
 	}
 }

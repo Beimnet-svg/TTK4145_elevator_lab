@@ -25,6 +25,4 @@ Current bugs:
 
 Questions for TA:
 
-- When plugging out internet cable, it cant communicate with elevetorserver, when simulating total disconnect, will we still be connected to the elevator locally.
-- Will you turn off the elevator box.
-- When getting valus from one module to the next, should we use a GetFunction, or make the variable global, or send them on channels.
+- When getting values from one module to the next, should we use a GetFunction, or make the variable global, or send them on channels.

@@ -89,7 +89,7 @@ func FSM_onMsgArrived(orders [config.NumberElev][config.NumberFloors][config.Num
 	default:
 
 	}
-	elevio.LightButtons(e)
+	elevio.LightButtons(AllActiveOrders, e.ElevatorID)
 }
 
 func Init_elevator(drv_floors chan int) {

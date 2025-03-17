@@ -109,12 +109,6 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 			continue // Log the error and keep listening
 		}
 
-		// Ignore messages from localhost (see next section for improvements)
-		// localAddr := conn.LocalAddr().(*net.UDPAddr)
-		// if localAddr.IP.Equal(addrSender.(*net.UDPAddr).IP) {
-		// 	continue
-		// }
-
 		msg, err := decodeMessage(buffer[:n])
 		if err != nil {
 			log.Println("Error decoding message:", err)
@@ -153,17 +147,10 @@ func SenderSlave(E elevio.Elevator) {
 	destinationAddr, err := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
 
 	var conn *net.UDPConn
-	for {
-		// Try to establish the connection
-		conn, err = net.DialUDP("udp", nil, destinationAddr)
-		if err != nil {
-			fmt.Println("Error dialing UDP, retrying in 5 seconds:", err)
-			time.Sleep(1 * time.Second) // Retry every 5 seconds if there's a connection error
-			continue
-		}
-
-		// If connection is successful, break out of the loop
-		break
+	conn, err = net.DialUDP("udp", nil, destinationAddr)
+	if err != nil {
+		fmt.Println("Error dialing UDP:", err)
+		return
 	}
 
 	defer conn.Close()
@@ -195,17 +182,10 @@ func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 	destinationAddr, err := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
 
 	var conn *net.UDPConn
-	for {
-		// Try to establish the connection
-		conn, err = net.DialUDP("udp", nil, destinationAddr)
-		if err != nil {
-			fmt.Println("Error dialing UDP, retrying in 5 seconds:", err)
-			time.Sleep(1 * time.Second) // Retry every 5 seconds if there's a connection error
-			continue
-		}
-
-		// If connection is successful, break out of the loop
-		break
+	conn, err = net.DialUDP("udp", nil, destinationAddr)
+	if err != nil {
+		fmt.Println("Error dialing UDP:", err)
+		return
 	}
 
 	defer conn.Close()

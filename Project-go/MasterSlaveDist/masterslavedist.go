@@ -63,6 +63,15 @@ func InitializeMasterSlaveDist(localElev elevio.Elevator, activeOrdersArrived ch
 	}
 }
 
+func SetDisconnected(setDisconnected chan bool) {
+	for {
+		select {
+		case <-setDisconnected:
+			Disconnected = true
+		}
+	}
+}
+
 func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.Elevator {
 	ActiveElevatorStates := []elevio.Elevator{}
 	for i := 0; i < len(ActiveElev); i++ {
@@ -205,7 +214,6 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 
 	// If only this elevator is active, it should consider itself disconnected and take over.
 	if numActiveElev == 1 {
-		Disconnected = true
 		setMaster <- true
 		setMaster <- true
 		return

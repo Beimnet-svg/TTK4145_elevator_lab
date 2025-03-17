@@ -25,6 +25,7 @@ var elevDied = make(chan int)
 
 var elevInactive = make(chan bool)
 var resetInactiveTimer = make(chan int)
+var setDisconnected = make(chan bool)
 
 func main() {
 
@@ -44,11 +45,12 @@ func main() {
 	go elevator_fsm.CheckInactiveElev(resetInactiveTimer)
 
 	go networking.Receiver(activeOrdersArrived, setMaster)
-	go networking.Sender(activeOrdersArrived)
+	go networking.Sender(activeOrdersArrived, setDisconnected)
 
 	go masterslavedist.WatchdogTimer(setMaster, elevDied, elevInactive)
 	go masterslavedist.ResetInactiveTimer(resetInactiveTimer, elevInactive)
 	go masterslavedist.CheckMasterTimerTimeout()
+	go masterslavedist.SetDisconnected(setDisconnected)
 	go ordermanager.ApplyBackupOrders(setMaster, activeOrdersArrived)
 	go ordermanager.ResetOrderCounter(elevDied)
 

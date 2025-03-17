@@ -48,18 +48,18 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	return &message, err
 }
 
-func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
 
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
-			SenderMaster(localElev, orders)
+			SenderMaster(localElev, orders, setDisconnected)
 			ordermanager.UpdateOrders(localElev, activeOrdersArrived)
 
 		} else {
-			SenderSlave(localElev)
+			SenderSlave(localElev, setDisconnected)
 		}
 
 	}
@@ -126,7 +126,7 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
 		} else if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
-		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {		
+		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecievedFromMaster(msg.Master.ElevID, msg.Master.Inactive, localElev, setMaster)
 			if masterslavedist.MasterID == msg.Master.ElevID || masterslavedist.MasterID == -1 {
 				ordermanager.UpdateOrderCounter(msg.Master.OrderCounter)
@@ -136,7 +136,7 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 	}
 
 }
-func SenderSlave(E elevio.Elevator) {
+func SenderSlave(E elevio.Elevator, setDisconnected chan bool) {
 
 	message := OrderMessage{
 		Slave: &OrderMessageSlave{
@@ -152,6 +152,8 @@ func SenderSlave(E elevio.Elevator) {
 	var conn *net.UDPConn
 	conn, err = net.DialUDP("udp", nil, destinationAddr)
 	if err != nil {
+		setDisconnected <- true
+		setDisconnected <- true
 		fmt.Println("Error dialing UDP:", err)
 		return
 	}
@@ -169,7 +171,7 @@ func SenderSlave(E elevio.Elevator) {
 
 }
 
-func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
 
 	message := OrderMessage{
 		Master: &OrderMessageMaster{
@@ -187,6 +189,8 @@ func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 	var conn *net.UDPConn
 	conn, err = net.DialUDP("udp", nil, destinationAddr)
 	if err != nil {
+		setDisconnected <- true
+		setDisconnected <- true
 		fmt.Println("Error dialing UDP:", err)
 		return
 	}

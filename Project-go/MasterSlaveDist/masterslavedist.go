@@ -216,6 +216,7 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 	if numActiveElev == 1 {
 		setMaster <- true
 		setMaster <- true
+		MasterID = localElevID
 		return
 	}
 

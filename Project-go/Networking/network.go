@@ -121,7 +121,7 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 
 		//If we got msg from same elevator id as we have locally, skip it
 		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID && localElev.Master {
-			fmt.Println("Recieved request from", msg.Slave.ElevID, "with request", msg.Slave.E.Requests)
+			//fmt.Println("Recieved request from", msg.Slave.ElevID, "with request", msg.Slave.E.Requests)
 			ordermanager.UpdateOrders(msg.Slave.E, activeOrdersArrived)
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
 		} else if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {

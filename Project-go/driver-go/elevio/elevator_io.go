@@ -100,6 +100,7 @@ func LightButtons(AllActiveOrders [config.NumberElev][config.NumberFloors][confi
 			for elev := 0; elev < config.NumberElev; elev++ {
 				if AllActiveOrders[elev][floor][button] {
 					SetButtonLamp(button, floor, true)
+					break
 				} else {
 					SetButtonLamp(button, floor, false)
 				}

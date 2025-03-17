@@ -12,7 +12,7 @@ import (
 var (
 	e = elevio.Elevator{
 		CurrentFloor:     0,
-		Direction:        elevio.MD_Up,
+		Direction:        elevio.MD_Stop,
 		Behaviour:        elevio.EB_Moving,
 		Requests:         [config.NumberFloors][config.NumberBtn]int{},
 		ActiveOrders:     [config.NumberFloors][config.NumberBtn]bool{},
@@ -101,9 +101,9 @@ func Init_elevator(drv_floors chan int) {
 		}
 	}
 
-	e.Direction = elevio.MD_Up
+	//e.Direction = elevio.MD_Up
 
-	elevio.SetMotorDirection(e.Direction)
+	elevio.SetMotorDirection(elevio.MD_Up)
 
 	elevio.SetDoorOpenLamp(false)
 	e.CurrentFloor = <-drv_floors

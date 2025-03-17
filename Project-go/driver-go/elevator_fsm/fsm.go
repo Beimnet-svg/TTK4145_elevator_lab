@@ -206,9 +206,17 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 			FSM_onMsgArrived(a, resetInactiveTimer)
 		case a := <-setMaster:
 			e.Master = a
-
+			//Store all orders a disconnected master had as new requests that will be processed by the new master
+			if !a {
+				e.Requests = [config.NumberFloors][config.NumberBtn]int{}
+				for floor := 0; floor < e.NumFloors; floor++ {
+					for button := 0; button < config.NumberBtn; button++ {
+						if e.ActiveOrders[floor][button] {
+							e.Requests[floor][button] = OrderCounter
+						}
+					}
+				}
+			}
 		}
-
 	}
-
 }

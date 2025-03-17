@@ -54,10 +54,6 @@ func main() {
 
 	go networking.Print()
 
-	//Networking go routine
-	//Acceptence tests
-	//1. test if door is closed before running
-
 	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr,
 		drv_stop, doorTimer, activeOrdersArrived, setMaster, elevInactive, resetInactiveTimer)
 

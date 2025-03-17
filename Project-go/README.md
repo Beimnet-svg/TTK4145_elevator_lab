@@ -19,7 +19,6 @@ Current bugs:
 
 - When pressing up and down in a floor, it removes both of them when reaching the floor if they are the only orders left
 - There is a wierd bug somewhere were an elevator just stops moving, should be an acceptence test for if elevator hasnt moved for a certain amount of time, restart it.
-- All hall buttons should light up when there is an order there.
 - Code quality: Instead of using setElevID in main, we can set config.ID and use that all over the place instead.
 - If two elevators are running thinking they are disconnectd, when reconnecting both become slaves. Fix: send the disconnected bool, set the one with lowest id as master.
 

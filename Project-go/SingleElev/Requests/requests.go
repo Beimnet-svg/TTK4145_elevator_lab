@@ -39,7 +39,7 @@ func hasRequestAtFloor(e elevio.Elevator) bool {
 
 func requestsAbove(e elevio.Elevator) bool {
 	for a := e.CurrentFloor + 1; a < config.NumberFloors; a++ {
-		for i := elevio.ButtonType(0); i < elevio.ButtonType(2); i++ {
+		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {
 			if e.ActiveOrders[a][i] {
 				return true
 			}
@@ -50,7 +50,7 @@ func requestsAbove(e elevio.Elevator) bool {
 
 func requestsBelow(e elevio.Elevator) bool {
 	for a := 0; a < e.CurrentFloor; a++ {
-		for i := elevio.ButtonType(0); i < elevio.ButtonType(2); i++ {
+		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {
 			if e.ActiveOrders[a][i] {
 				return true
 			}

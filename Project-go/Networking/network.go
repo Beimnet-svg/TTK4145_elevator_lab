@@ -70,26 +70,17 @@ func Print() {
 	for range ticker.C {
 
 		localElev := elevfsm.GetElevator()
-		fmt.Print("Active elevators:", masterslavedist.ActiveElev, "\n")
+		//fmt.Print("Active elevators:", masterslavedist.ActiveElev, "\n")
 		fmt.Print("Master:", localElev.Master, "\n")
-		fmt.Print("MasterID: ", masterslavedist.MasterID, "\n")
-		fmt.Print("Disconnected: ", masterslavedist.Disconnected, "\n")
+		//fmt.Print("MasterID: ", masterslavedist.MasterID, "\n")
+		//fmt.Print("Disconnected: ", masterslavedist.Disconnected, "\n")
 		fmt.Print(("Ordercounter: "), ordermanager.GetOrderCounter(), "\n")
 		fmt.Print("All active orders: ", ordermanager.GetAllActiveOrder(), "\n")
 	}
 }
 
-func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
-	// Listen for incoming UDP packets on port 20007
-	localAdress, _ := net.ResolveUDPAddr("udp", ":20007")
-	conn, err := net.ListenUDP("udp", localAdress)
-	if err != nil {
-		log.Fatal("Error listening on port 20007:", err)
-	}
-	defer conn.Close()
+func flushRecieverChannel(conn *net.UDPConn, buffer []byte) (*net.UDPConn, []byte) {
 
-	buffer := make([]byte, 1024)
-	// Flush any pending messages in the buffer
 	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	for {
 		_, _, err := conn.ReadFrom(buffer)
@@ -104,31 +95,45 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 	// Remove the read deadline to resume normal operation
 	conn.SetReadDeadline(time.Time{})
 
+	return conn, buffer
+}
+
+func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
+
+	localAdress, _ := net.ResolveUDPAddr("udp", ":20007")
+	conn, _ := net.ListenUDP("udp", localAdress)
+
+	defer conn.Close()
+
+	buffer := make([]byte, 1024)
+
+	conn, buffer = flushRecieverChannel(conn, buffer)
+
 	for {
 		n, _, err := conn.ReadFrom(buffer)
 		if err != nil {
-			log.Println("Error reading from connection:", err)
-			continue // Log the error and keep listening
+			continue
 		}
 
 		msg, err := decodeMessage(buffer[:n])
 		if err != nil {
-			log.Println("Error decoding message:", err)
-			continue // Skip this malformed message
+			continue
 		}
 
 		localElev := elevfsm.GetElevator()
 
-		//If we got msg from same elevator id as we have locally, skip it
 		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID && localElev.Master {
-			//fmt.Println("Recieved request from", msg.Slave.ElevID, "with request", msg.Slave.E.Requests)
 			ordermanager.UpdateOrders(msg.Slave.E, activeOrdersArrived)
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
+
 		} else if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
+
 		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
 			masterslavedist.AliveRecievedFromMaster(msg.Master.ElevID, msg.Master.Inactive, localElev, setMaster)
-			if masterslavedist.MasterID == msg.Master.ElevID || masterslavedist.MasterID == -1 {
+
+			masterID := masterslavedist.GetMasterID()
+			if masterID == msg.Master.ElevID || masterID == -1 {
 				ordermanager.UpdateOrderCounter(msg.Master.OrderCounter)
 				activeOrdersArrived <- msg.Master.Orders
 			}
@@ -136,74 +141,64 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 	}
 
 }
-func SenderSlave(E elevio.Elevator, setDisconnected chan bool) {
+func SenderSlave(e elevio.Elevator, setDisconnected chan bool) {
 
 	message := OrderMessage{
 		Slave: &OrderMessageSlave{
-			ElevID: E.ElevatorID,
+			ElevID: e.ElevatorID,
 			Master: false,
-			E:      E,
+			E:      e,
 		},
 	}
 
 	broadcastAddr := "255.255.255.255"
-	destinationAddr, err := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
+	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
 
-	var conn *net.UDPConn
-	conn, err = net.DialUDP("udp", nil, destinationAddr)
+	conn, err := net.DialUDP("udp", nil, destinationAddr)
 	if err != nil {
 		setDisconnected <- true
 		setDisconnected <- true
 		fmt.Println("Error dialing UDP:", err)
 		return
 	}
-
 	defer conn.Close()
 
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
-	err = enc.Encode(message)
-	if err != nil {
-		fmt.Println("Error encoding orders:", err)
-	}
+	enc.Encode(message)
+
 	content := buffer.Bytes()
 	conn.Write(content)
-
 }
 
-func SenderMaster(E elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
+func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
 
 	message := OrderMessage{
 		Master: &OrderMessageMaster{
-			ElevID:       E.ElevatorID,
+			ElevID:       e.ElevatorID,
 			Master:       true,
 			Orders:       orders,
 			OrderCounter: ordermanager.GetOrderCounter(),
-			Inactive:     E.Inactive,
+			Inactive:     e.Inactive,
 		},
 	}
 
 	broadcastAddr := "255.255.255.255"
-	destinationAddr, err := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
+	destinationAddr, _ := net.ResolveUDPAddr("udp", broadcastAddr+":20007")
 
-	var conn *net.UDPConn
-	conn, err = net.DialUDP("udp", nil, destinationAddr)
+	conn, err := net.DialUDP("udp", nil, destinationAddr)
 	if err != nil {
 		setDisconnected <- true
 		setDisconnected <- true
 		fmt.Println("Error dialing UDP:", err)
 		return
 	}
-
 	defer conn.Close()
 
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)
-	err = enc.Encode(message)
-	if err != nil {
-		fmt.Println("Error encoding orders:", err)
-	}
+	enc.Encode(message)
+
 	content := buffer.Bytes()
 	conn.Write(content)
-
 }

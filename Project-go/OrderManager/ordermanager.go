@@ -67,10 +67,10 @@ func UpdateOrders(e elevio.Elevator, activeOrderChan chan [config.NumberElev][co
 	maxCounterValue := orderCounter[e.ElevatorID]
 
 	//If we have a new order we redistribute hall orders and set new order counter
-	CheckIfNewOrders(e, &maxCounterValue, &newRequests)
-
-	aliveElevatorStates := masterslavedist.FetchAliveElevators(ElevState)
+	maxCounterValue, newRequests = findNewRequests(e, maxCounterValue, newRequests)
 	orderCounter[e.ElevatorID] = maxCounterValue
+
+	aliveElevatorStates := masterslavedist.FetchActiveElevators(ElevState)
 	input, cabRequests := formatInput(aliveElevatorStates, allActiveOrders, newRequests)
 	allActiveOrders = assignRequests(input, cabRequests)
 
@@ -78,23 +78,23 @@ func UpdateOrders(e elevio.Elevator, activeOrderChan chan [config.NumberElev][co
 	activeOrderChan <- allActiveOrders
 }
 
-func CheckIfNewOrders(e elevio.Elevator, maxCounterValue *int, NewRequests *[config.NumberElev][config.NumberFloors][config.NumberBtn]bool) bool {
+func findNewRequests(e elevio.Elevator, maxCounterValue int, newRequests [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) (int, [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	//Check if there are new orders in the system
 
 	for i := 0; i < config.NumberFloors; i++ {
 		for j := 0; j < config.NumberBtn; j++ {
 			//Based on the counter values in e.Requests we can determine if we have a new order
 			if e.Requests[i][j] > orderCounter[e.ElevatorID] {
-				NewRequests[e.ElevatorID][i][j] = true
-				if e.Requests[i][j] > *maxCounterValue {
+				newRequests[e.ElevatorID][i][j] = true
+				if e.Requests[i][j] > maxCounterValue {
 					//Find the highest counter value in the elevator
-					*maxCounterValue = e.Requests[i][j]
+					maxCounterValue = e.Requests[i][j]
 				}
 			}
 		}
 	}
 
-	return *maxCounterValue > orderCounter[e.ElevatorID]
+	return maxCounterValue, newRequests
 }
 
 // Format input to be used in the cost function

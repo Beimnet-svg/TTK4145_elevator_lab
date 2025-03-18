@@ -13,7 +13,7 @@ var (
 	ActiveElev       [config.NumberElev]bool
 	AliveElev        [config.NumberElev]bool
 	localElevID      int
-	Disconnected     = false
+	disconnected     = false
 	MasterID         = -1
 )
 
@@ -67,12 +67,16 @@ func SetDisconnected(setDisconnected chan bool) {
 	for {
 		select {
 		case <-setDisconnected:
-			Disconnected = true
+			disconnected = true
 		}
 	}
 }
 
-func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.Elevator {
+func GetDisconnected() bool {
+	return disconnected
+}
+
+func FetchActiveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.Elevator {
 	ActiveElevatorStates := []elevio.Elevator{}
 	for i := 0; i < len(ActiveElev); i++ {
 		if ActiveElev[i] {
@@ -85,7 +89,7 @@ func FetchAliveElevators(ElevState [config.NumberElev]elevio.Elevator) []elevio.
 
 func AliveRecievedFromSlave(elevID int, recievedE elevio.Elevator, setMaster chan bool) {
 
-	if Disconnected && checkMasterTimer == nil {
+	if disconnected && checkMasterTimer == nil {
 		fmt.Println("Starting checkMasterTimer")
 		checkMasterTimer = time.NewTimer(config.WatchdogDuration * time.Second)
 	}
@@ -101,18 +105,17 @@ func AliveRecievedFromSlave(elevID int, recievedE elevio.Elevator, setMaster cha
 
 }
 
-func AliveRecievedFromMaster(elevID int, Inactive bool, localElev elevio.Elevator, setMaster chan bool) {
+func AliveRecievedFromMaster(elevID int, inactive bool, disconnected bool, localElev elevio.Elevator, setMaster chan bool) {
 
 	if MasterID == -1 {
 		MasterID = elevID
 	}
 
-	if Inactive {
+	if inactive {
 		ActiveElev[elevID] = false
 
-	} else {
+	} else if !disconnected {
 		ActiveElev[elevID] = true
-
 	}
 
 	AliveElev[elevID] = true
@@ -126,11 +129,11 @@ func AliveRecievedFromMaster(elevID int, Inactive bool, localElev elevio.Elevato
 
 func resolveMasterConflict(senderElevID int, setMaster chan bool) {
 
-	if Disconnected {
+	if disconnected {
 		// If we had previously considered ourselves isolated, now we acknowledge a valid master.
 		setMaster <- false
 		setMaster <- false
-		Disconnected = false
+		disconnected = false
 		checkMasterTimer = nil
 		fmt.Println("Received heartbeat from elevator", senderElevID, "— clearing disconnected flag.")
 		MasterID = senderElevID
@@ -146,7 +149,7 @@ func CheckMasterTimerTimeout() {
 		}
 		select {
 		case <-checkMasterTimer.C:
-			Disconnected = false
+			disconnected = false
 			checkMasterTimer = nil
 		}
 	}

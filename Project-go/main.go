@@ -57,7 +57,7 @@ func main() {
 	go ordermanager.ApplyBackupOrders(setMaster, activeOrdersArrived)
 	go ordermanager.ResetOrderCounter(elevDied)
 
-	go networking.Print() // To be deleted
+	go networking.Print()
 
 	go elevfsm.MainFsm(drvButtons, drvFloors, drvObstr,
 		drvStop, doorTimer, activeOrdersArrived, setMaster, elevInactive, resetInactiveTimer)

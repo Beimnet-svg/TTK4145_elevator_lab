@@ -68,12 +68,15 @@ func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][co
 func Print() {
 	ticker := time.NewTicker(2 * time.Second)
 	for range ticker.C {
-
+		masterID := masterslavedist.GetMasterID()
 		localElev := elevfsm.GetElevator()
-		//fmt.Print("Active elevators:", masterslavedist.ActiveElev, "\n")
+		activeElev := masterslavedist.GetActiveElev()
+		disconnected := masterslavedist.GetDisconnected()
+		
+		fmt.Print("Active elevators:", activeElev, "\n")
 		fmt.Print("Master:", localElev.Master, "\n")
-		//fmt.Print("MasterID: ", masterslavedist.MasterID, "\n")
-		//fmt.Print("Disconnected: ", masterslavedist.Disconnected, "\n")
+		fmt.Print("MasterID: ", masterID, "\n")
+		fmt.Print("Disconnected: ", disconnected, "\n")
 		fmt.Print(("Ordercounter: "), ordermanager.GetOrderCounter(), "\n")
 		fmt.Print("All active orders: ", ordermanager.GetAllActiveOrder(), "\n")
 	}

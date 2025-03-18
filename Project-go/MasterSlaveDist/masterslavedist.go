@@ -65,6 +65,14 @@ func GetMasterID() int {
 	return masterID
 }
 
+func GetDisconnected() bool {
+	return disconnected
+}
+
+func GetActiveElev() [config.NumberElev]bool {
+	return activeElev
+}
+
 func SetDisconnected(setDisconnected chan bool) {
 	for range setDisconnected {
 		disconnected = true

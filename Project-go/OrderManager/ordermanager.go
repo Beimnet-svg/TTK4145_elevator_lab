@@ -55,6 +55,21 @@ func UpdateOrderCounter(newOrderCounter [config.NumberElev]int) {
 	orderCounter = newOrderCounter
 }
 
+// Apply backup to new master
+func ApplyBackupOrders(setMaster chan bool, activeOrderChan chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+	for a := range setMaster {
+		if a {
+			allActiveOrders = elevfsm.GetAllActiveOrders()
+		}
+	}
+}
+
+func ResetOrderCounter(elevDied chan int) {
+	for ID := range elevDied {
+		orderCounter[ID] = 0
+	}
+}
+
 func UpdateOrders(e elevio.Elevator, activeOrderChan chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
 	newRequests := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
 
@@ -175,19 +190,4 @@ func transformOutput(ret []byte, cabRequests [config.NumberElev][]bool) [config.
 	}
 
 	return newAllActiveOrders
-}
-
-// Apply backup to new master
-func ApplyBackupOrders(setMaster chan bool, activeOrderChan chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
-	for a := range setMaster {
-		if a {
-			allActiveOrders = elevfsm.GetAllActiveOrders()
-		}
-	}
-}
-
-func ResetOrderCounter(elevDied chan int) {
-	for ID := range elevDied {
-		orderCounter[ID] = 0
-	}
 }

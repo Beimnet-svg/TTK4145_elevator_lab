@@ -49,7 +49,7 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 }
 
 func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(config.SendDelay * time.Millisecond)
 	for range ticker.C {
 		localElev := elevator_fsm.GetElevator()
 

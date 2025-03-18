@@ -25,3 +25,6 @@ Current bugs:
 Questions for TA:
 
 - When getting values from one module to the next, should we use a GetFunction, or make the variable global, or send them on channels.
+
+For report:
+- When a disconnected elevator reconnects it will get its cab orders from before disconnecting. This was done to ensure no orders are lost when an elevators dies or disconnects. This will hurt performance but ensure fault tolerance

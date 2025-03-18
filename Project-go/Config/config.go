@@ -7,4 +7,5 @@ const (
 	WatchdogDuration = 2
 	DoorOpenDuration = 3
 	InactiveDuration = 10
+	SendDelay        = 50
 )

@@ -3,9 +3,10 @@ package ordermanager
 import (
 	config "Project-go/Config"
 	masterslavedist "Project-go/MasterSlaveDist"
-	requests "Project-go/driver-go/Requests"
-	"Project-go/driver-go/elevator_fsm"
-	"Project-go/driver-go/elevio"
+	elevfsm "Project-go/SingleElev/ElevFsm"
+	elevio "Project-go/SingleElev/Elevio"
+	requests "Project-go/SingleElev/Requests"
+
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -203,7 +204,8 @@ func ApplyBackupOrders(setMaster chan bool, activeOrderChan chan [config.NumberE
 		select {
 		case a := <-setMaster:
 			if a {
-				allActiveOrders = elevator_fsm.AllActiveOrders
+
+				allActiveOrders = elevfsm.GetAllActiveOrders()
 			}
 		}
 	}

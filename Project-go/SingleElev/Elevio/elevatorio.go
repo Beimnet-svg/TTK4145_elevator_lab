@@ -8,12 +8,15 @@ import (
 	"time"
 )
 
-const _pollRate = 20 * time.Millisecond
+const _pollRate = config.PollRate * time.Millisecond
 
-var _initialized bool = false
-var _numFloors int = config.NumberFloors
-var _mtx sync.Mutex
-var _conn net.Conn
+var(
+	_initialized bool = false
+	_numFloors int = config.NumberFloors
+	_mtx sync.Mutex
+	_conn net.Conn
+)
+
 
 type MotorDirection int
 

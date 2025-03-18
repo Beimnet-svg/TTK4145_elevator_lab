@@ -2,7 +2,7 @@ package masterslavedist
 
 import (
 	config "Project-go/Config"
-	"Project-go/driver-go/elevio"
+	elevio "Project-go/SingleElev/Elevio"
 	"fmt"
 	"time"
 )
@@ -10,65 +10,60 @@ import (
 var (
 	watchdogTimers   [config.NumberElev]*time.Timer
 	checkMasterTimer *time.Timer
-	ActiveElev       [config.NumberElev]bool
-	AliveElev        [config.NumberElev]bool
-	localElevID      int
-	Disconnected     = false
-	MasterID         = -1
+
+	ActiveElev [config.NumberElev]bool
+	AliveElev  [config.NumberElev]bool
+
+	Disconnected = false
+	MasterID     = -1
 )
 
 func InitializeMasterSlaveDist(localElev elevio.Elevator, activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
-	localElevID = localElev.ElevatorID
-	ActiveElev[localElevID] = true
-	AliveElev[localElevID] = true
 
-	// Start the watchdog timers for all elevators except the local one.
-	for i := 0; i < len(watchdogTimers); i++ {
-		if i != localElevID {
-			startWatchdogTimer(i, config.WatchdogDuration)
+	ActiveElev[config.ElevID] = true
+	AliveElev[config.ElevID] = true
+
+	for ID := 0; ID < len(watchdogTimers); ID++ {
+		// If different ID than our own we look at time between alive messages
+		if ID != config.ElevID {
+			startWatchdogTimer(ID, config.WatchdogDuration)
 		}
-		if i == localElevID {
-			startWatchdogTimer(i, config.InactiveDuration)
+		// If same ID we look at time since started operation
+		if ID == config.ElevID {
+			startWatchdogTimer(ID, config.InactiveDuration)
 		}
 	}
 
-	// All elevators start a timer to listen for an active master message.
 	timer := time.NewTimer(config.WatchdogDuration * time.Second)
 	select {
 	case <-activeOrdersArrived:
-		// A message arrived from another elevator, process it in AliveRecieved.
+		// Connected to running system
 		return
 	case <-timer.C:
-		// Timer expired with no message received; if this elevator is the highest priority, elect itself as master.
-		if localElevID == 0 {
+		// No master on the network
+		if config.ElevID == 0 {
 			setMaster <- true
 			setMaster <- true
-			MasterID = localElevID
-			fmt.Printf("MasterID %d is now the master", MasterID)
+			MasterID = config.ElevID
 			return
 		}
 
-		highestPriority := true
-		for j := 0; j < localElevID; j++ {
+		for j := 0; j < config.ElevID; j++ {
 			if AliveElev[j] {
-				highestPriority = false
-				break
+				return
 			}
 		}
-		if highestPriority {
-			setMaster <- true
-			setMaster <- true
-			MasterID = localElevID
-		}
+
+		setMaster <- true
+		setMaster <- true
+		MasterID = config.ElevID
+
 	}
 }
 
 func SetDisconnected(setDisconnected chan bool) {
-	for {
-		select {
-		case <-setDisconnected:
-			Disconnected = true
-		}
+	for range setDisconnected {
+		Disconnected = true
 	}
 }
 
@@ -172,8 +167,8 @@ func ResetInactiveTimer(resetInactiveElev chan int, elevInactive chan bool) {
 	for {
 		select {
 		case <-resetInactiveElev:
-			startWatchdogTimer(localElevID, config.InactiveDuration)
-			ActiveElev[localElevID] = true
+			startWatchdogTimer(config.ElevID, config.InactiveDuration)
+			ActiveElev[config.ElevID] = true
 			elevInactive <- false
 			elevInactive <- false
 		}
@@ -188,7 +183,7 @@ func WatchdogTimer(setMaster chan bool, elevDied chan int, elevInactive chan boo
 			if watchdogTimers[i] != nil {
 				select {
 				case <-watchdogTimers[i].C:
-					if i != localElevID {
+					if i != config.ElevID {
 						ActiveElev[i] = false
 						AliveElev[i] = false
 						elevDied <- i
@@ -216,20 +211,20 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 	if numActiveElev == 1 {
 		setMaster <- true
 		setMaster <- true
-		MasterID = localElevID
+		MasterID = config.ElevID
 		return
 	}
 
 	// If the disconnected elevator was the master, check if any lower-priority elevator is still active.
 	if disconnectedElevID == MasterID {
-		if localElevID == 0 {
+		if config.ElevID == 0 {
 			setMaster <- true
 			setMaster <- true
-			MasterID = localElevID
+			MasterID = config.ElevID
 			return
 		}
 
-		for j := 0; j < localElevID; j++ {
+		for j := 0; j < config.ElevID; j++ {
 			if AliveElev[j] {
 				MasterID = -1
 				return
@@ -238,7 +233,7 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 		// No lower active elevator found; signal master election.
 		setMaster <- true
 		setMaster <- true
-		MasterID = localElevID
+		MasterID = config.ElevID
 	}
 }
 

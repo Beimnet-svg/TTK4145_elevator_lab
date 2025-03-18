@@ -1,4 +1,4 @@
-package timer
+package doortimer
 
 import (
 	"time"
@@ -7,19 +7,19 @@ import (
 var _timer *time.Timer
 var _timerActive bool
 
-func StartTimer(duration int) {
+func StartDoorTimer(duration int) {
 	_timer = time.NewTimer(time.Duration(duration) * time.Second)
 	_timerActive = true
 }
 
-func StopTimer() {
+func StopDoorTimer() {
 	if _timer != nil {
 		_timer.Stop()
 	}
 	_timerActive = false
 }
 
-func TimerTimeOut() bool {
+func doorTimerTimeOut() bool {
 	if !_timerActive {
 		return false
 	}
@@ -32,13 +32,13 @@ func TimerTimeOut() bool {
 	}
 }
 
-func PollTimer(doorTimer chan bool) {
+func PollDoorTimer(doorTimer chan bool) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			doorTimer <- TimerTimeOut()
+			doorTimer <- doorTimerTimeOut()
 		}
 	}
 }

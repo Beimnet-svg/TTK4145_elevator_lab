@@ -5,61 +5,64 @@ import (
 	masterslavedist "Project-go/MasterSlaveDist"
 	networking "Project-go/Networking"
 	ordermanager "Project-go/OrderManager"
-	timer "Project-go/driver-go/Timer"
-	"Project-go/driver-go/elevator_fsm"
+	doortimer "Project-go/SingleElev/Doortimer"
+	elevfsm "Project-go/SingleElev/ElevFsm"
+	elevio "Project-go/SingleElev/Elevio"
 	"os"
 	"strconv"
-
-	"Project-go/driver-go/elevio"
 )
 
-var drv_buttons = make(chan elevio.ButtonEvent)
-var drv_floors = make(chan int)
-var drv_obstr = make(chan bool)
-var drv_stop = make(chan bool)
+var (
+	drvButtons = make(chan elevio.ButtonEvent)
+	drvFloors  = make(chan int)
+	drvObstr   = make(chan bool)
+	drvStop    = make(chan bool)
+	doorTimer  = make(chan bool)
 
-var doorTimer = make(chan bool)
-var activeOrdersArrived = make(chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool)
-var setMaster = make(chan bool)
-var elevDied = make(chan int)
+	activeOrdersArrived = make(chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool)
 
-var elevInactive = make(chan bool)
-var resetInactiveTimer = make(chan int)
-var setDisconnected = make(chan bool)
+	setMaster          = make(chan bool)
+	elevDied           = make(chan int)
+	elevInactive       = make(chan bool)
+	resetInactiveTimer = make(chan int)
+	setDisconnected    = make(chan bool)
+)
 
 func main() {
 
 	elevio.Init("localhost:15657", config.NumberFloors)
+
 	ID := os.Args[1]
-
 	ID_e, _ := strconv.Atoi(ID)
+	config.SetElevID(ID_e)
+	elevfsm.SetElevID()
 
-	elevator_fsm.SetElevatorID(ID_e)
+	go elevfsm.InitElevator(drvFloors)
 
-	go elevator_fsm.Init_elevator(drv_floors)
-	go elevio.PollButtons(drv_buttons)
-	go elevio.PollFloorSensor(drv_floors)
-	go elevio.PollObstructionSwitch(drv_obstr)
-	go elevio.PollStopButton(drv_stop)
-	go timer.PollTimer(doorTimer)
-	go elevator_fsm.CheckInactiveElev(resetInactiveTimer)
+	go elevio.PollButtons(drvButtons)
+	go elevio.PollFloorSensor(drvFloors)
+	go elevio.PollObstructionSwitch(drvObstr)
+	go elevio.PollStopButton(drvStop)
+	go doortimer.PollDoorTimer(doorTimer)
 
 	go networking.Receiver(activeOrdersArrived, setMaster)
 	go networking.Sender(activeOrdersArrived, setDisconnected)
 
+	go elevfsm.CheckInactiveElev(resetInactiveTimer)
 	go masterslavedist.WatchdogTimer(setMaster, elevDied, elevInactive)
 	go masterslavedist.ResetInactiveTimer(resetInactiveTimer, elevInactive)
 	go masterslavedist.CheckMasterTimerTimeout()
 	go masterslavedist.SetDisconnected(setDisconnected)
+
 	go ordermanager.ApplyBackupOrders(setMaster, activeOrdersArrived)
 	go ordermanager.ResetOrderCounter(elevDied)
 
-	go networking.Print()
+	go networking.Print() // To be deleted
 
-	go elevator_fsm.Main_FSM(drv_buttons, drv_floors, drv_obstr,
-		drv_stop, doorTimer, activeOrdersArrived, setMaster, elevInactive, resetInactiveTimer)
+	go elevfsm.MainFsm(drvButtons, drvFloors, drvObstr,
+		drvStop, doorTimer, activeOrdersArrived, setMaster, elevInactive, resetInactiveTimer)
 
-	myelevator := elevator_fsm.GetElevator()
+	myelevator := elevfsm.GetElevator()
 	go masterslavedist.InitializeMasterSlaveDist(myelevator, activeOrdersArrived, setMaster)
 
 	for {

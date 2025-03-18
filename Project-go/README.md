@@ -13,7 +13,7 @@ MasterSlaveDist -> Master slave distributor. We always want there to be only one
 
 Networking -> A common sender and reciever module for recieving and sending data. The data being sent over is an "Order message"-struct, which is being decoded. The slave sends its elevator struct, containing new requests and elevator state, and the master sends all active orders in the system. These are sent out periodically and works as a heartbeat as well.
 
-OrderManager -> This is where all the orders are being processed. When new buttons are pressed in either the maste ror the slaves, the ordermanager will make sure that the elevator which has the cost-optimal path takes this order. This then gets sent from the master to the slaves.
+OrderManager -> This is where all the orders are being processed. When new buttons are pressed in either the master or the slaves, we increment our order counter by one and add the order counter value to the request array. This is then compared with a value in the master ordermanager to determine if requests are new or old. The ordermanager utilizes the new requests combined with the current request to destribute orders to the elevator which has the cost-optimal path. This then gets sent from the master to the slaves.
 
 Current bugs:
 
@@ -28,3 +28,5 @@ Questions for TA:
 
 For report:
 - When a disconnected elevator reconnects it will get its cab orders from before disconnecting. This was done to ensure no orders are lost when an elevators dies or disconnects. This will hurt performance but ensure fault tolerance
+- Using get functions even though go has other functionallity to ensure that it is clear where variables from other modules are used
+- Boolean values sent on channels sometimes gets stuck, so have to send two times. When we didn't need to send boolean values we used int instead

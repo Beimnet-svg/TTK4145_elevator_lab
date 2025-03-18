@@ -4,8 +4,8 @@ import (
 	config "Project-go/Config"
 	masterslavedist "Project-go/MasterSlaveDist"
 	ordermanager "Project-go/OrderManager"
-	"Project-go/driver-go/elevator_fsm"
-	"Project-go/driver-go/elevio"
+	elevfsm "Project-go/SingleElev/ElevFsm"
+	elevio "Project-go/SingleElev/Elevio"
 	"bytes"
 	"encoding/gob"
 	"fmt"
@@ -51,7 +51,7 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
 	ticker := time.NewTicker(config.SendDelay * time.Millisecond)
 	for range ticker.C {
-		localElev := elevator_fsm.GetElevator()
+		localElev := elevfsm.GetElevator()
 
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
@@ -69,7 +69,7 @@ func Print() {
 	ticker := time.NewTicker(2 * time.Second)
 	for range ticker.C {
 
-		localElev := elevator_fsm.GetElevator()
+		localElev := elevfsm.GetElevator()
 		fmt.Print("Active elevators:", masterslavedist.ActiveElev, "\n")
 		fmt.Print("Master:", localElev.Master, "\n")
 		fmt.Print("MasterID: ", masterslavedist.MasterID, "\n")
@@ -117,7 +117,7 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 			continue // Skip this malformed message
 		}
 
-		localElev := elevator_fsm.GetElevator()
+		localElev := elevfsm.GetElevator()
 
 		//If we got msg from same elevator id as we have locally, skip it
 		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID && localElev.Master {

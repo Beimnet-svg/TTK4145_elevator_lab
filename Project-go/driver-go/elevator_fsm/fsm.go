@@ -181,6 +181,7 @@ func Main_FSM(drv_buttons chan elevio.ButtonEvent, drv_floors chan int,
 	for {
 		select {
 		case a := <-drv_buttons:
+			fmt.Println("Button pressed: ", a)
 			FSM_onButtonPress(a)
 
 		case a := <-drv_floors:

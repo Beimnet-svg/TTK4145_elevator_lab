@@ -75,7 +75,7 @@ func Print() {
 		fmt.Print("MasterID: ", masterslavedist.MasterID, "\n")
 		fmt.Print("Disconnected: ", masterslavedist.Disconnected, "\n")
 		fmt.Print(("Ordercounter: "), ordermanager.GetOrderCounter(), "\n")
-		fmt.Print("All active orders: ", ordermanager.GetAllActiveOrder(), "\n")
+		fmt.Print("Active orders: ", localElev.ActiveOrders, "\n")
 	}
 }
 

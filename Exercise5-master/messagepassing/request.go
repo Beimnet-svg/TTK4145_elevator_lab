@@ -1,8 +1,10 @@
 package main
 
-import "fmt"
-import "time"
-import "sort"
+import (
+	"fmt"
+	"sort"
+	"time"
+)
 
 
 const tick = time.Millisecond * 33
@@ -46,19 +48,33 @@ type ResourceRequest struct {
 func resourceManager(askFor chan ResourceRequest, giveBack chan Resource){
 
     res     := Resource{}
-    //busy    := false
-    //queue   := PriorityQueue{}
+    busy    := false
+    queue   := PriorityQueue{}
 
     for {
         select {
         case request := <-askFor:
             //fmt.Printf("[resource manager]: received request: %+v\n", request)
-            request.channel <- res
+            if !busy {
+                busy = true
+                request.channel <- res
+                res = Resource{}
+            } else {
+                queue.Insert(request, request.priority)
+            }
         case res = <-giveBack:
             //fmt.Printf("[resource manager]: resource returned\n")
+            if queue.Empty() {
+                busy = false
+            } else {
+                request := queue.Front().(ResourceRequest)
+                queue.PopFront()
+                request.channel <- res
+                busy = true
+                res = Resource{}
         }
     }
-}
+}}
 
 
 // --- RESOURCE USERS -- //

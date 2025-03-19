@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 
 const tick = time.Millisecond * 33
@@ -43,13 +45,24 @@ func resourceManager(takeLow chan Resource, takeHigh chan Resource, giveBack cha
         select {
         case takeHigh<- res:
             //fmt.Printf("[resource manager]: resource taken (high)\n")
+            
+            res = <-giveBack
+            continue
+        default:
+        }
+        select{
+        case takeHigh<- res:
+            res =<-giveBack
         case takeLow<- res:
             //fmt.Printf("[resource manager]: resource taken (low)\n")
-        case res = <-giveBack:
+            res=<-giveBack
+        case r := <-giveBack:
             //fmt.Printf("[resource manager]: resource returned\n")
-        }
+            res=r
+            
+        }}
     }
-}
+
     
 
 // --- RESOURCE USERS -- //

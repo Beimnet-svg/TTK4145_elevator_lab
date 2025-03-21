@@ -206,11 +206,15 @@ func resetNoMasterTimer(timerDuration int) {
 // goroutine
 func CheckThereAreOnlySlaves() {
 
-	for range masterTimer.C {
-
-		disconnected = false
-		masterTimer = nil
-
+	for {
+		if masterTimer == nil {
+			continue
+		}
+		select {
+		case <-masterTimer.C:
+			disconnected = false
+			masterTimer = nil
+		}
 	}
 }
 

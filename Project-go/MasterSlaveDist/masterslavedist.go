@@ -263,6 +263,7 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 		setMaster <- true
 		setMaster <- true
 		masterID = config.ElevID
+		disconnected = true
 		return
 	}
 

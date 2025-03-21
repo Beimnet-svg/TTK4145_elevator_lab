@@ -53,6 +53,7 @@ func main() {
 	go masterslavedist.ResetInactiveTimer(resetInactiveTimer, elevInactive)
 	go masterslavedist.CheckMasterTimerTimeout()
 	go masterslavedist.SetDisconnected(setDisconnected)
+	go masterslavedist.CheckThereAreOnlySlaves()
 
 	go ordermanager.ApplyBackupOrders(setMaster, activeOrdersArrived)
 	go ordermanager.ResetOrderCounter(elevDied)

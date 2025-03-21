@@ -10,6 +10,7 @@ import (
 var (
 	watchdogTimers   [config.NumberElev]*time.Timer
 	checkMasterTimer *time.Timer
+	masterTimer      *time.Timer
 
 	activeElev [config.NumberElev]bool
 	aliveElev  [config.NumberElev]bool
@@ -110,6 +111,8 @@ func AliveRecievedFromSlave(senderElevID int, senderE elevio.Elevator, setMaster
 
 func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.Elevator, setMaster chan bool) {
 
+	resetNoMasterTimer(4)
+
 	if masterID == -1 {
 		masterID = senderElevID
 	}
@@ -182,6 +185,33 @@ func ResetInactiveTimer(resetInactiveElev chan int, elevInactive chan bool) {
 		elevInactive <- false
 	}
 
+}
+
+func resetNoMasterTimer(timerDuration int) {
+	duration := time.Duration(timerDuration) * time.Second
+	if masterTimer != nil {
+		// Reset the timer; if it wasn't active, drain its channel.
+		if !masterTimer.Reset(duration) {
+			// Try to drain the channel if necessary.
+			select {
+			case <-masterTimer.C:
+			default:
+			}
+		}
+	} else {
+		masterTimer = time.NewTimer(duration)
+	}
+}
+
+// goroutine
+func CheckThereAreOnlySlaves() {
+
+	for range masterTimer.C {
+
+		disconnected = false
+		masterTimer = nil
+
+	}
 }
 
 // If we have not recieved a message from an elevator within the watchdog duration, we assume it is disconnected

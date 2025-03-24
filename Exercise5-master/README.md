@@ -255,17 +255,24 @@ The problem is that there is no way to prioritize the cases, as Go will [choose 
 
 - Condition variables, Java monitors, and Ada protected objects are quite similar in what they do (temporarily yield execution so some other task can unblock us).
   - But in what ways do these mechanisms differ?
+    Protected obj, does the waiting, entry and syncing in itself, java does the syncing, but you have to wait and notify, cond variables you have to mutex lock because the resource arent protected or synced otherwise. 
 
 - Bugs in this kind of low-level synchronization can be hard to spot.
   - Which solutions are you most confident are correct?
+    priorityselect because it is kinda wierd and no tests, some priority will wait forever. Protected obj, were easy and they do all the stuff for you. Less insight to what actually happens, which could be both negative and positive. 
   - Why, and what does this say about code quality?
+    If you have functions that do specific things and are easy to use and test, it makes code quality easy. 
 
 - We operated only with two priority levels here, but it makes sense for this "kind" of priority resource to support more priorities.
   - How would you extend these solutions to N priorities? Is it even possible to do this elegantly?
+  Message passing, makes it easy, add more cases. Protected obj, add one obj for each priority level. Semaphores, you just increase the priority selec queue size, and loop over all the queues in the deallocate. Cond var, dont see why it would be hard to increase size, but some will possibly be stuck waiting forever. 
   - What (if anything) does that say about code quality?
+  If you create code that is ecpandable, it is easy to expand. Functions that work for everything. 
 
 - In D's standard library, `getValue` for semaphores is not even exposed (probably because it is not portable – Windows semaphores don't have `getValue`, though you could hack it together with `ReleaseSemaphore()` and `WaitForSingleObject()`).
-  - A leading question: Is using `getValue` *ever* appropriate?
+  - A leading question: Is using `getValue` *ever* appropriate?getValue
+  No, we dont think so.
   - Explain your intuition: What is it that makes `getValue` so dubious?
-
+      We think using getValue will alter the value other which makes the locking not work the way it is intended.  
 - Which one(s) of these different mechanisms do you prefer, both for this specific task and in general? (This is a matter of taste – there are no "right" answers here)
+Protected obj, those were easy and intuitive. Message passing makes sense when running different threads, as long as I have to do less work, I am happy. 

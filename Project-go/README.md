@@ -30,6 +30,7 @@ For report:
 - When a disconnected elevator reconnects it will get its cab orders from before disconnecting. This was done to ensure no orders are lost when an elevators dies or disconnects. This will hurt performance but ensure fault tolerance
 - Using get functions even though go has other functionallity to ensure that it is clear where variables from other modules are used
 - Boolean values sent on channels sometimes gets stuck, so have to send two times. When we didn't need to send boolean values we used int instead
+- Comment on choice of timer structure
 
 Stuff to do before delivering
 - Test up/down in same floor floor with delays and sending

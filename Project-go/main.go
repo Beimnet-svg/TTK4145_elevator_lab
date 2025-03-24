@@ -50,11 +50,9 @@ func main() {
 	go networking.Sender(activeOrdersArrived, setDisconnected, orderBlockChan)
 
 	go elevfsm.CheckInactiveElev(resetInactiveTimer)
-	go masterslavedist.WatchdogTimer(setMaster, elevDied, elevInactive)
+	go masterslavedist.CheckTimerTimout(setMaster, elevDied, elevInactive)
 	go masterslavedist.ResetInactiveTimer(resetInactiveTimer, elevInactive)
-	go masterslavedist.CheckMasterTimerTimeout()
 	go masterslavedist.SetDisconnected(setDisconnected)
-	go masterslavedist.CheckThereAreOnlySlaves()
 
 	go ordermanager.ApplyBackupOrders(setMaster, activeOrdersArrived)
 	go ordermanager.ResetOrderCounter(elevDied)

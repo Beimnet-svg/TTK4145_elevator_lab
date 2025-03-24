@@ -8,9 +8,10 @@ import (
 )
 
 var (
-	watchdogTimers   [config.NumberElev]*time.Timer
-	checkMasterTimer *time.Timer
-	masterTimer      *time.Timer
+	watchdogTimers         [config.NumberElev]*time.Timer
+	waitForMasterMsg       *time.Timer
+	aliveMasterTimer       *time.Timer
+	waitForMasterMsgActive = false
 
 	activeElev [config.NumberElev]bool
 	aliveElev  [config.NumberElev]bool
@@ -18,6 +19,17 @@ var (
 	disconnected = false
 	masterID     = -1 // -1 means master unknown
 )
+
+func initializeTimers() {
+	for i := 0; i < len(watchdogTimers); i++ {
+		watchdogTimers[i] = time.NewTimer(1 * time.Second)
+		watchdogTimers[i].Stop()
+	}
+	waitForMasterMsg = time.NewTimer(1 * time.Second)
+	waitForMasterMsg.Stop()
+	aliveMasterTimer = time.NewTimer(1 * time.Second)
+	aliveMasterTimer.Stop()
+}
 
 func InitializeMasterSlaveDist(localElev elevio.Elevator, activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
 
@@ -27,11 +39,11 @@ func InitializeMasterSlaveDist(localElev elevio.Elevator, activeOrdersArrived ch
 	for ID := 0; ID < len(watchdogTimers); ID++ {
 		// If different ID than our own we look at time between alive messages
 		if ID != config.ElevID {
-			startWatchdogTimer(ID, config.WatchdogDuration)
+			watchdogTimers[ID] = resetTimer(watchdogTimers[ID], config.WatchdogDuration*time.Second)
 		}
 		// If same ID we look at time since started operation
 		if ID == config.ElevID {
-			startWatchdogTimer(ID, config.InactiveDuration)
+			watchdogTimers[ID] = resetTimer(watchdogTimers[ID], config.InactiveDuration*time.Second)
 		}
 	}
 
@@ -93,9 +105,10 @@ func FetchActiveElevators(elevState [config.NumberElev]elevio.Elevator) []elevio
 
 func AliveRecievedFromSlave(senderElevID int, senderE elevio.Elevator, setMaster chan bool) {
 
-	if disconnected && checkMasterTimer == nil {
+	if disconnected && !waitForMasterMsgActive {
 		fmt.Println("Starting checkMasterTimer")
-		checkMasterTimer = time.NewTimer(config.WatchdogDuration * time.Second)
+		waitForMasterMsg = time.NewTimer(config.WatchdogDuration * time.Second)
+		waitForMasterMsgActive = true
 	}
 
 	if senderE.Inactive {
@@ -105,13 +118,13 @@ func AliveRecievedFromSlave(senderElevID int, senderE elevio.Elevator, setMaster
 	}
 
 	aliveElev[senderElevID] = true
-	startWatchdogTimer(senderElevID, config.WatchdogDuration)
+	watchdogTimers[senderElevID] = resetTimer(watchdogTimers[senderElevID], config.WatchdogDuration*time.Second)
 
 }
 
 func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.Elevator, setMaster chan bool) {
 
-	resetNoMasterTimer(4)
+	aliveMasterTimer = resetTimer(aliveMasterTimer, 2*config.WatchdogDuration*time.Second)
 
 	if masterID == -1 {
 		masterID = senderElevID
@@ -126,7 +139,7 @@ func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.E
 	}
 
 	aliveElev[senderElevID] = true
-	startWatchdogTimer(senderElevID, config.WatchdogDuration)
+	watchdogTimers[senderElevID] = resetTimer(watchdogTimers[senderElevID], config.WatchdogDuration*time.Second)
 
 	if localElev.Master {
 		resolveMasterConflict(senderElevID, setMaster)
@@ -140,90 +153,28 @@ func resolveMasterConflict(senderElevID int, setMaster chan bool) {
 		setMaster <- false
 		setMaster <- false
 		disconnected = false
-		checkMasterTimer = nil
+
+		waitForMasterMsg.Stop()
+		waitForMasterMsgActive = false
+
 		fmt.Println("Received heartbeat from elevator", senderElevID, "— clearing disconnected flag.")
 		masterID = senderElevID
 	}
 
 }
 
-func CheckMasterTimerTimeout() {
-
+func CheckTimerTimout(setMaster chan bool, elevDied chan int, elevInactive chan bool) {
 	for {
-		if checkMasterTimer == nil {
-			continue
+		if waitForMasterMsg == nil {
+			initializeTimers()
 		}
 		select {
-		case <-checkMasterTimer.C:
+		case <-waitForMasterMsg.C:
 			disconnected = false
-			checkMasterTimer = nil
-		}
-	}
-}
-
-func startWatchdogTimer(elevID int, timerDuration int) {
-	duration := time.Duration(timerDuration) * time.Second
-	if watchdogTimers[elevID] != nil {
-		// Reset the timer; if it wasn't active, drain its channel.
-		if !watchdogTimers[elevID].Reset(duration) {
-			// Try to drain the channel if necessary.
-			select {
-			case <-watchdogTimers[elevID].C:
-			default:
-			}
-		}
-	} else {
-		watchdogTimers[elevID] = time.NewTimer(duration)
-	}
-}
-
-func ResetInactiveTimer(resetInactiveElev chan int, elevInactive chan bool) {
-	for range resetInactiveElev {
-		startWatchdogTimer(config.ElevID, config.InactiveDuration)
-		activeElev[config.ElevID] = true
-		elevInactive <- false
-		elevInactive <- false
-	}
-
-}
-
-func resetNoMasterTimer(timerDuration int) {
-	duration := time.Duration(timerDuration) * time.Second
-	if masterTimer != nil {
-		// Reset the timer; if it wasn't active, drain its channel.
-		if !masterTimer.Reset(duration) {
-			// Try to drain the channel if necessary.
-			select {
-			case <-masterTimer.C:
-			default:
-			}
-		}
-	} else {
-		masterTimer = time.NewTimer(duration)
-	}
-}
-
-// goroutine
-func CheckThereAreOnlySlaves() {
-
-	for {
-		if masterTimer == nil {
-			continue
-		}
-		select {
-		case <-masterTimer.C:
-			disconnected = false
-			masterTimer = nil
-		}
-	}
-}
-
-// If we have not recieved a message from an elevator within the watchdog duration, we assume it is disconnected
-func WatchdogTimer(setMaster chan bool, elevDied chan int, elevInactive chan bool) {
-	for {
-
-		for i := 0; i < len(watchdogTimers); i++ {
-			if watchdogTimers[i] != nil {
+		case <-aliveMasterTimer.C:
+			applyMaster(setMaster)
+		default:
+			for i := 0; i < len(watchdogTimers); i++ {
 				select {
 				case <-watchdogTimers[i].C:
 					if i != config.ElevID {
@@ -231,20 +182,43 @@ func WatchdogTimer(setMaster chan bool, elevDied chan int, elevInactive chan boo
 						aliveElev[i] = false
 						elevDied <- i
 						fmt.Print("Elevator disc", i, "\n")
-						ChangeMaster(setMaster, i)
+						changeMaster(setMaster, i)
 					} else {
 						fmt.Printf("Elevator %d inactive \n", i)
 						activeElev[i] = false
 						elevInactive <- true
 						elevInactive <- true
 					}
-
 				default:
 					// Timer hasn't fired; continue to the next timer.
 				}
+
 			}
 		}
 	}
+}
+
+func resetTimer(timer *time.Timer, duration time.Duration) *time.Timer {
+	if !timer.Reset(duration) {
+		// Try to drain the channel if necessary.
+		select {
+		case <-timer.C:
+		default:
+		}
+	}
+	return timer
+}
+
+func ResetInactiveTimer(resetInactiveElev chan int, elevInactive chan bool) {
+	for range resetInactiveElev {
+		watchdogTimers[config.ElevID] = resetTimer(watchdogTimers[config.ElevID], config.InactiveDuration*time.Second)
+		if !activeElev[config.ElevID] {
+			activeElev[config.ElevID] = true
+			elevInactive <- false
+			elevInactive <- false
+		}
+	}
+
 }
 
 func numActiveElev() int {
@@ -257,7 +231,27 @@ func numActiveElev() int {
 	return numActiveElev
 }
 
-func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
+func applyMaster(setMaster chan bool) {
+	if config.ElevID == 0 {
+		setMaster <- true
+		setMaster <- true
+		masterID = config.ElevID
+		return
+	}
+
+	for j := 0; j < config.ElevID; j++ {
+		if aliveElev[j] {
+			masterID = -1
+			return
+		}
+	}
+
+	setMaster <- true
+	setMaster <- true
+	masterID = config.ElevID
+}
+
+func changeMaster(setMaster chan bool, disconnectedElevID int) {
 
 	if numActiveElev() == 1 {
 		setMaster <- true
@@ -268,22 +262,6 @@ func ChangeMaster(setMaster chan bool, disconnectedElevID int) {
 	}
 
 	if disconnectedElevID == masterID {
-		if config.ElevID == 0 {
-			setMaster <- true
-			setMaster <- true
-			masterID = config.ElevID
-			return
-		}
-
-		for j := 0; j < config.ElevID; j++ {
-			if aliveElev[j] {
-				masterID = -1
-				return
-			}
-		}
-
-		setMaster <- true
-		setMaster <- true
-		masterID = config.ElevID
+		applyMaster(setMaster)
 	}
 }

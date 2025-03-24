@@ -48,7 +48,7 @@ func decodeMessage(buffer []byte) (*OrderMessage, error) {
 	return &message, err
 }
 
-func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
+func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool, orderBlockedChan chan int) {
 	ticker := time.NewTicker(config.SendDelay * time.Millisecond)
 	for range ticker.C {
 		localElev := elevfsm.GetElevator()
@@ -56,7 +56,7 @@ func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][co
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
 			SenderMaster(localElev, orders, setDisconnected)
-			ordermanager.UpdateOrders(localElev, activeOrdersArrived)
+			ordermanager.UpdateOrders(localElev, activeOrdersArrived, orderBlockedChan)
 
 		} else {
 			SenderSlave(localElev, setDisconnected)
@@ -101,7 +101,7 @@ func flushRecieverChannel(conn *net.UDPConn, buffer []byte) (*net.UDPConn, []byt
 	return conn, buffer
 }
 
-func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool) {
+func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setMaster chan bool, orderBlockChan chan int) {
 
 	localAdress, _ := net.ResolveUDPAddr("udp", ":20007")
 	conn, _ := net.ListenUDP("udp", localAdress)
@@ -126,7 +126,7 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 		localElev := elevfsm.GetElevator()
 
 		if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID && localElev.Master {
-			ordermanager.UpdateOrders(msg.Slave.E, activeOrdersArrived)
+			ordermanager.UpdateOrders(msg.Slave.E, activeOrdersArrived, orderBlockChan)
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
 
 		} else if msg.Slave != nil && msg.Slave.ElevID != localElev.ElevatorID {

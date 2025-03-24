@@ -6,6 +6,7 @@ import (
 	elevfsm "Project-go/SingleElev/ElevFsm"
 	elevio "Project-go/SingleElev/Elevio"
 	requests "Project-go/SingleElev/Requests"
+	"time"
 
 	"encoding/json"
 	"os/exec"
@@ -14,11 +15,11 @@ import (
 )
 
 var (
-	allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
-	orderCounter    [config.NumberElev]int
-	elevState       [config.NumberElev]elevio.Elevator
-	//takeOrder should be a slice of size config.NumberElev of true values
-	takeOrder 	    = make([]bool, config.NumberElev)
+	allActiveOrders   [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
+	orderCounter      [config.NumberElev]int
+	elevState         [config.NumberElev]elevio.Elevator
+	orderBlocked      [config.NumberElev]bool
+	orderBlockedTimer [config.NumberElev]*time.Timer
 )
 
 var motorDirectionToString = map[elevio.MotorDirection]string{
@@ -72,12 +73,41 @@ func ResetOrderCounter(elevDied chan int) {
 	}
 }
 
-func UpdateOrders(e elevio.Elevator, activeOrderChan chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) {
+// If the last two orders are up and down in the same floor we want to block the elevator, making sure it announces change of direction
+func OrderBlockedProcked(orderBlockedChan chan int) {
+	for {
+		select {
+		case ID := <-orderBlockedChan:
+			orderBlocked[ID] = true
+			if orderBlockedTimer[ID] == nil {
+				orderBlockedTimer[ID] = time.NewTimer(config.DoorOpenDuration * time.Second)
+			} else {
+				orderBlockedTimer[ID].Reset(config.DoorOpenDuration * time.Second)
+			}
+		default:
+			for ID := 0; ID < config.NumberElev; ID++ {
+
+				if orderBlockedTimer[ID] == nil {
+					continue
+				}
+
+				select {
+				case <-orderBlockedTimer[ID].C:
+					orderBlocked[ID] = false
+					orderBlockedTimer[ID] = nil
+				default:
+				}
+			}
+		}
+	}
+}
+
+func UpdateOrders(e elevio.Elevator, activeOrderChan chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, orderBlockedChan chan int) {
 	newRequests := [config.NumberElev][config.NumberFloors][config.NumberBtn]bool{}
 
 	elevState[e.ElevatorID] = e
 
-	allActiveOrders = requests.RequestClearAtCurrentFloor(e, allActiveOrders)
+	allActiveOrders = requests.RequestClearAtCurrentFloor(e, allActiveOrders, orderBlocked[e.ElevatorID], orderBlockedChan)
 
 	maxCounterValue := orderCounter[e.ElevatorID]
 	maxCounterValue, newRequests = findNewRequests(e, maxCounterValue, newRequests)

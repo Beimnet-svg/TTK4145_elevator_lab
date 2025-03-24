@@ -20,6 +20,7 @@ var (
 	doorTimer  = make(chan bool)
 
 	activeOrdersArrived = make(chan [config.NumberElev][config.NumberFloors][config.NumberBtn]bool)
+	orderBlockChan      = make(chan int)
 
 	setMaster          = make(chan bool)
 	elevDied           = make(chan int)
@@ -45,8 +46,8 @@ func main() {
 	go elevio.PollStopButton(drvStop)
 	go doortimer.PollDoorTimer(doorTimer)
 
-	go networking.Receiver(activeOrdersArrived, setMaster)
-	go networking.Sender(activeOrdersArrived, setDisconnected)
+	go networking.Receiver(activeOrdersArrived, setMaster, orderBlockChan)
+	go networking.Sender(activeOrdersArrived, setDisconnected, orderBlockChan)
 
 	go elevfsm.CheckInactiveElev(resetInactiveTimer)
 	go masterslavedist.WatchdogTimer(setMaster, elevDied, elevInactive)
@@ -57,8 +58,9 @@ func main() {
 
 	go ordermanager.ApplyBackupOrders(setMaster, activeOrdersArrived)
 	go ordermanager.ResetOrderCounter(elevDied)
+	go ordermanager.OrderBlockedProcked(orderBlockChan)
 
-	go networking.Print()
+	//go networking.Print()
 
 	go elevfsm.MainFsm(drvButtons, drvFloors, drvObstr,
 		drvStop, doorTimer, activeOrdersArrived, setMaster, elevInactive, resetInactiveTimer)

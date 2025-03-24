@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	watchdogTimers         [config.NumberElev]*time.Timer
-	waitForMasterMsg       *time.Timer
-	aliveMasterTimer       *time.Timer
-	waitForMasterMsgActive = false
+	watchdogTimers      [config.NumberElev]*time.Timer
+	noMasterTimer       *time.Timer
+	aliveMasterTimer    *time.Timer
+	noMasterTimerActive = false
 
 	activeElev [config.NumberElev]bool
 	aliveElev  [config.NumberElev]bool
@@ -25,8 +25,8 @@ func initializeTimers() {
 		watchdogTimers[i] = time.NewTimer(1 * time.Second)
 		watchdogTimers[i].Stop()
 	}
-	waitForMasterMsg = time.NewTimer(1 * time.Second)
-	waitForMasterMsg.Stop()
+	noMasterTimer = time.NewTimer(1 * time.Second)
+	noMasterTimer.Stop()
 	aliveMasterTimer = time.NewTimer(1 * time.Second)
 	aliveMasterTimer.Stop()
 }
@@ -105,10 +105,10 @@ func FetchActiveElevators(elevState [config.NumberElev]elevio.Elevator) []elevio
 
 func AliveRecievedFromSlave(senderElevID int, senderE elevio.Elevator, setMaster chan bool) {
 
-	if disconnected && !waitForMasterMsgActive {
+	if disconnected && !noMasterTimerActive {
 		fmt.Println("Starting checkMasterTimer")
-		waitForMasterMsg = time.NewTimer(config.WatchdogDuration * time.Second)
-		waitForMasterMsgActive = true
+		noMasterTimer = time.NewTimer(config.WatchdogDuration * time.Second)
+		noMasterTimerActive = true
 	}
 
 	if senderE.Inactive {
@@ -122,7 +122,7 @@ func AliveRecievedFromSlave(senderElevID int, senderE elevio.Elevator, setMaster
 
 }
 
-func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.Elevator, setMaster chan bool) {
+func AliveRecievedFromMaster(senderElevID int, senderInactive bool, senderDisconnected bool, localElev elevio.Elevator, setMaster chan bool) {
 
 	aliveMasterTimer = resetTimer(aliveMasterTimer, 2*config.WatchdogDuration*time.Second)
 
@@ -130,7 +130,7 @@ func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.E
 		masterID = senderElevID
 	}
 
-	if inactive {
+	if senderInactive {
 		activeElev[senderElevID] = false
 
 	} else {
@@ -142,34 +142,41 @@ func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.E
 	watchdogTimers[senderElevID] = resetTimer(watchdogTimers[senderElevID], config.WatchdogDuration*time.Second)
 
 	if localElev.Master {
-		resolveMasterConflict(senderElevID, setMaster)
+		resolveMasterConflict(senderElevID, senderDisconnected, setMaster)
+	} else if senderElevID != masterID && !senderDisconnected {
+		masterID = -1
 	}
 
 }
 
-func resolveMasterConflict(senderElevID int, setMaster chan bool) {
+func resolveMasterConflict(senderElevID int, senderDisconnected bool, setMaster chan bool) {
 
 	if disconnected {
 		setMaster <- false
 		setMaster <- false
 		disconnected = false
 
-		waitForMasterMsg.Stop()
-		waitForMasterMsgActive = false
+		noMasterTimer.Stop()
+		noMasterTimerActive = false
 
 		fmt.Println("Received heartbeat from elevator", senderElevID, "— clearing disconnected flag.")
 		masterID = senderElevID
+	} else if !senderDisconnected {
+		setMaster <- false
+		setMaster <- false
+		masterID = -1
+
 	}
 
 }
 
 func CheckTimerTimout(setMaster chan bool, elevDied chan int, elevInactive chan bool) {
 	for {
-		if waitForMasterMsg == nil {
+		if noMasterTimer == nil {
 			initializeTimers()
 		}
 		select {
-		case <-waitForMasterMsg.C:
+		case <-noMasterTimer.C:
 			disconnected = false
 		case <-aliveMasterTimer.C:
 			applyMaster(setMaster)

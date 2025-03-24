@@ -26,6 +26,7 @@ type OrderMessageMaster struct {
 	Orders       [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 	OrderCounter [config.NumberElev]int
 	Inactive     bool
+	Disconnected bool
 }
 
 type OrderMessage struct {
@@ -55,7 +56,8 @@ func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][co
 
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
-			SenderMaster(localElev, orders, setDisconnected)
+			disconnected := masterslavedist.GetDisconnected()
+			SenderMaster(localElev, orders, disconnected, setDisconnected)
 			ordermanager.UpdateOrders(localElev, activeOrdersArrived, orderBlockedChan)
 
 		} else {
@@ -133,7 +135,7 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 			masterslavedist.AliveRecievedFromSlave(msg.Slave.ElevID, msg.Slave.E, setMaster)
 
 		} else if msg.Master != nil && msg.Master.ElevID != localElev.ElevatorID {
-			masterslavedist.AliveRecievedFromMaster(msg.Master.ElevID, msg.Master.Inactive, localElev, setMaster)
+			masterslavedist.AliveRecievedFromMaster(msg.Master.ElevID, msg.Master.Inactive, msg.Master.Disconnected, localElev, setMaster)
 
 			masterID := masterslavedist.GetMasterID()
 			if masterID == msg.Master.ElevID || masterID == -1 {
@@ -174,7 +176,7 @@ func SenderSlave(e elevio.Elevator, setDisconnected chan bool) {
 	conn.Write(content)
 }
 
-func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
+func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, disconnected bool, setDisconnected chan bool) {
 
 	message := OrderMessage{
 		Master: &OrderMessageMaster{
@@ -183,6 +185,7 @@ func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 			Orders:       orders,
 			OrderCounter: ordermanager.GetOrderCounter(),
 			Inactive:     e.Inactive,
+			Disconnected: disconnected,
 		},
 	}
 

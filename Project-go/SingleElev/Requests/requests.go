@@ -107,21 +107,30 @@ func ReqestShouldClearImmideatly(e elevio.Elevator, floor int, b elevio.ButtonTy
 }
 
 // Removing orders from allActiveOrders in the ordermanager based on the elevator's current floor and direction. Used in the ordermanager
-func RequestClearAtCurrentFloor(e elevio.Elevator, allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
+func RequestClearAtCurrentFloor(e elevio.Elevator, allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool,
+	takeOrder bool, takeOrderChan chan int) ([config.NumberElev][config.NumberFloors][config.NumberBtn]bool, bool) {
 	if e.Behaviour == elevio.EB_DoorOpen {
 		allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_Cab] = false
 		switch e.Direction {
 		case elevio.MD_Up:
 			if !requestsAbove(e) && !allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] {
-				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
-			} else {
+				if takeOrder {
+					allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+				}
+			} else if allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] {
 				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+				takeOrder = false
+				takeOrderChan <- 1
 			}
 		case elevio.MD_Down:
 			if !requestsBelow(e) && !allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] {
-				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
-			} else {
+				if takeOrder {
+					allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+				}
+			} else if allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] {
 				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+				takeOrder = false
+				takeOrderChan <- 1
 			}
 		case elevio.MD_Stop:
 			if requestsBelow(e) && allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] {
@@ -140,6 +149,6 @@ func RequestClearAtCurrentFloor(e elevio.Elevator, allActiveOrders [config.Numbe
 		}
 	}
 
-	return allActiveOrders
+	return allActiveOrders, takeOrder
 
 }

@@ -17,6 +17,8 @@ var (
 	allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool
 	orderCounter    [config.NumberElev]int
 	elevState       [config.NumberElev]elevio.Elevator
+	//takeOrder should be a slice of size config.NumberElev of true values
+	takeOrder 	    = make([]bool, config.NumberElev)
 )
 
 var motorDirectionToString = map[elevio.MotorDirection]string{

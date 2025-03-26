@@ -212,11 +212,11 @@ func resetTimer(timer *time.Timer, duration time.Duration) *time.Timer {
 func ResetInactiveTimer(resetInactiveElev chan int, elevInactive chan bool) {
 	for range resetInactiveElev {
 		watchdogTimers[config.ElevID] = resetTimer(watchdogTimers[config.ElevID], config.InactiveDuration*time.Second)
-		if !activeElev[config.ElevID] {
+		
 			activeElev[config.ElevID] = true
 			elevInactive <- false
 			elevInactive <- false
-		}
+		
 	}
 
 }

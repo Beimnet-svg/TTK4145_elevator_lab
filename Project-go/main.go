@@ -58,7 +58,7 @@ func main() {
 	go ordermanager.ResetOrderCounter(elevDied)
 	go ordermanager.OrderBlockedProcked(orderBlockChan)
 
-	//go networking.Print()
+	go networking.Print()
 
 	go elevfsm.MainFsm(drvButtons, drvFloors, drvObstr,
 		drvStop, doorTimer, activeOrdersArrived, setMaster, elevInactive, resetInactiveTimer)

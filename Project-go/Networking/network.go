@@ -74,11 +74,12 @@ func Print() {
 		disconnected := masterslavedist.GetDisconnected()
 		
 		fmt.Print("Active elevators:", activeElev, "\n")
+		fmt.Print("Inactive: ", localElev.Inactive, "\n")
 		fmt.Print("Master:", localElev.Master, "\n")
 		fmt.Print("MasterID: ", masterID, "\n")
 		fmt.Print("Disconnected: ", disconnected, "\n")
 		fmt.Print(("Ordercounter: "), ordermanager.GetOrderCounter(), "\n")
-		fmt.Print("All active orders: ", ordermanager.GetAllActiveOrder(), "\n")
+		//fmt.Print("All active orders: ", ordermanager.GetAllActiveOrder(), "\n")
 	}
 }
 

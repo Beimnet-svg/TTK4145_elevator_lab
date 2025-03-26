@@ -122,7 +122,7 @@ func AliveRecievedFromSlave(senderElevID int, senderE elevio.Elevator, setMaster
 
 }
 
-func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.Elevator, setMaster chan bool) {
+func AliveRecievedFromMaster(senderElevID int, senderInactive bool, senderDisconnected bool, localElev elevio.Elevator, setMaster chan bool) {
 
 	aliveMasterTimer = resetTimer(aliveMasterTimer, 2*config.WatchdogDuration*time.Second)
 
@@ -130,7 +130,7 @@ func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.E
 		masterID = senderElevID
 	}
 
-	if inactive {
+	if senderInactive {
 		activeElev[senderElevID] = false
 
 	} else {
@@ -142,12 +142,14 @@ func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.E
 	watchdogTimers[senderElevID] = resetTimer(watchdogTimers[senderElevID], config.WatchdogDuration*time.Second)
 
 	if localElev.Master {
-		resolveMasterConflict(senderElevID, setMaster)
+		resolveMasterConflict(senderElevID, senderDisconnected, setMaster)
+	} else if senderElevID != masterID && !senderDisconnected{
+		masterID = -1
 	}
 
 }
 
-func resolveMasterConflict(senderElevID int, setMaster chan bool) {
+func resolveMasterConflict(senderElevID int, senderDisconnected bool, setMaster chan bool) {
 
 	if disconnected {
 		setMaster <- false
@@ -159,6 +161,10 @@ func resolveMasterConflict(senderElevID int, setMaster chan bool) {
 
 		fmt.Println("Received heartbeat from elevator", senderElevID, "— clearing disconnected flag.")
 		masterID = senderElevID
+	} else if !senderDisconnected{
+		setMaster <- false
+		setMaster <- false
+		masterID = -1
 	}
 
 }

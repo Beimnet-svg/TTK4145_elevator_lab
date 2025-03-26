@@ -212,11 +212,11 @@ func resetTimer(timer *time.Timer, duration time.Duration) *time.Timer {
 func ResetInactiveTimer(resetInactiveElev chan int, elevInactive chan bool) {
 	for range resetInactiveElev {
 		watchdogTimers[config.ElevID] = resetTimer(watchdogTimers[config.ElevID], config.InactiveDuration*time.Second)
-		
-			activeElev[config.ElevID] = true
-			elevInactive <- false
-			elevInactive <- false
-		
+
+		activeElev[config.ElevID] = true
+		elevInactive <- false
+		elevInactive <- false
+
 	}
 
 }
@@ -236,6 +236,7 @@ func applyMaster(setMaster chan bool) {
 		setMaster <- true
 		setMaster <- true
 		masterID = config.ElevID
+		aliveMasterTimer.Stop()
 		return
 	}
 
@@ -249,6 +250,7 @@ func applyMaster(setMaster chan bool) {
 	setMaster <- true
 	setMaster <- true
 	masterID = config.ElevID
+	aliveMasterTimer.Stop()
 }
 
 func changeMaster(setMaster chan bool, disconnectedElevID int) {

@@ -126,7 +126,6 @@ func fsmOnButtonPress(b elevio.ButtonEvent) {
 	} else {
 		OrderCounter += 1
 		e = elevio.AddToQueue(b.Button, b.Floor, e, OrderCounter)
-		fmt.Println(e.Requests)
 	}
 }
 
@@ -215,7 +214,7 @@ func MainFsm(drvButtons chan elevio.ButtonEvent, drvFloors chan int,
 						}
 					}
 				}
-				fmt.Println("Requests", e.Requests)
+				
 			}
 		}
 	}

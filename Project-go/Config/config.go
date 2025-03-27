@@ -11,6 +11,7 @@ const (
 
 	SendDelay = 50
 	PollRate  = 20
+	DebugMode = false
 )
 
 var ElevID = -1

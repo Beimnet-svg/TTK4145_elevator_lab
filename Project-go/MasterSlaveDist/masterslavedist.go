@@ -20,6 +20,7 @@ var (
 	masterID     = -1 // -1 means master unknown
 )
 
+//Start & stop the timers to avoid them being initialized as nil. 
 func initializeTimers() {
 	for i := 0; i < len(watchdogTimers); i++ {
 		watchdogTimers[i] = time.NewTimer(1 * time.Second)
@@ -105,8 +106,8 @@ func FetchActiveElevators(elevState [config.NumberElev]elevio.Elevator) []elevio
 
 func AliveRecievedFromSlave(senderElevID int, senderE elevio.Elevator, setMaster chan bool) {
 
+	//Starting timer to check if there is a master on the network, when reconnecting.
 	if disconnected && !waitForMasterMsgActive {
-		fmt.Println("Starting checkMasterTimer")
 		waitForMasterMsg = time.NewTimer(config.WatchdogDuration * time.Second)
 		waitForMasterMsgActive = true
 	}
@@ -123,6 +124,7 @@ func AliveRecievedFromSlave(senderElevID int, senderE elevio.Elevator, setMaster
 }
 
 func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.Elevator, setMaster chan bool) {
+	//If you are slave and dont get a master message within time, elect master.
 	if masterID != config.ElevID{
 		aliveMasterTimer = resetTimer(aliveMasterTimer, 2*config.WatchdogDuration*time.Second)
 	}

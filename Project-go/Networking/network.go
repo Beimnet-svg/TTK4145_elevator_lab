@@ -55,33 +55,17 @@ func Sender(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][co
 
 		if localElev.Master {
 			orders := ordermanager.GetAllActiveOrder()
-			SenderMaster(localElev, orders, setDisconnected)
+			senderMaster(localElev, orders, setDisconnected)
 			ordermanager.UpdateOrders(localElev, activeOrdersArrived, orderBlockedChan)
 
 		} else {
-			SenderSlave(localElev, setDisconnected)
+			senderSlave(localElev, setDisconnected)
 		}
 
 	}
 }
 
-func Print() {
-	ticker := time.NewTicker(2 * time.Second)
-	for range ticker.C {
-		masterID := masterslavedist.GetMasterID()
-		localElev := elevfsm.GetElevator()
-		activeElev := masterslavedist.GetActiveElev()
-		disconnected := masterslavedist.GetDisconnected()
-		
-		fmt.Print("Active elevators:", activeElev, "\n")
-		fmt.Print("Inactive: ", localElev.Inactive, "\n")
-		fmt.Print("Master:", localElev.Master, "\n")
-		fmt.Print("MasterID: ", masterID, "\n")
-		fmt.Print("Disconnected: ", disconnected, "\n")
-		fmt.Print(("Ordercounter: "), ordermanager.GetOrderCounter(), "\n")
-		//fmt.Print("All active orders: ", ordermanager.GetAllActiveOrder(), "\n")
-	}
-}
+
 
 func flushRecieverChannel(conn *net.UDPConn, buffer []byte) (*net.UDPConn, []byte) {
 
@@ -145,7 +129,7 @@ func Receiver(activeOrdersArrived chan [config.NumberElev][config.NumberFloors][
 	}
 
 }
-func SenderSlave(e elevio.Elevator, setDisconnected chan bool) {
+func senderSlave(e elevio.Elevator, setDisconnected chan bool) {
 
 	message := OrderMessage{
 		Slave: &OrderMessageSlave{
@@ -175,7 +159,7 @@ func SenderSlave(e elevio.Elevator, setDisconnected chan bool) {
 	conn.Write(content)
 }
 
-func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
+func senderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool, setDisconnected chan bool) {
 
 	message := OrderMessage{
 		Master: &OrderMessageMaster{
@@ -205,4 +189,22 @@ func SenderMaster(e elevio.Elevator, orders [config.NumberElev][config.NumberFlo
 
 	content := buffer.Bytes()
 	conn.Write(content)
+}
+
+func Print() {
+	ticker := time.NewTicker(2 * time.Second)
+	for range ticker.C {
+		masterID := masterslavedist.GetMasterID()
+		localElev := elevfsm.GetElevator()
+		activeElev := masterslavedist.GetActiveElev()
+		disconnected := masterslavedist.GetDisconnected()
+		
+		fmt.Print("Active elevators:", activeElev, "\n")
+		fmt.Print("Inactive: ", localElev.Inactive, "\n")
+		fmt.Print("Master:", localElev.Master, "\n")
+		fmt.Print("MasterID: ", masterID, "\n")
+		fmt.Print("Disconnected: ", disconnected, "\n")
+		fmt.Print(("Ordercounter: "), ordermanager.GetOrderCounter(), "\n")
+		//fmt.Print("All active orders: ", ordermanager.GetAllActiveOrder(), "\n")
+	}
 }

@@ -17,8 +17,8 @@ Networking -> A common sender and reciever module for recieving and sending data
 
 OrderManager -> This is where all the orders are being processed. When new buttons are pressed in either the master or the slaves, we increment our order counter by one and add the order counter value to the request array. This is then compared with a value in the master ordermanager to determine if requests are new or old. The ordermanager utilizes the new requests combined with the current request to destribute orders to the elevator which has the cost-optimal path. This then gets sent from the master to the slaves.
 
-
 For report:
+
 - When a disconnected elevator reconnects it will get its cab orders from before disconnecting. This was done to ensure no orders are lost when an elevators dies or disconnects. This will hurt performance but ensure fault tolerance
 - Using get functions even though go has other functionallity to ensure that it is clear where variables from other modules are used
 - Boolean values sent on channels sometimes gets stuck, so have to send two times. When we didn't need to send boolean values we used int instead
@@ -26,6 +26,7 @@ For report:
 - If packet loss over some threshold, go into single elevator mode, as our current approach is not reliable when packet loss > 80-90%
 - Comment on get functions
 - Just send elevator, dont need anything else
+- UpdateOrderCOunter -> This was made, knowing that it would not lead to race conditions, but after reasessing the usecase, and go language, it should have been changed to a chanel.
 
 Stuff to do before delivering
 

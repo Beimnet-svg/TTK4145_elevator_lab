@@ -6,12 +6,11 @@ import (
 	elevfsm "Project-go/SingleElev/ElevFsm"
 	elevio "Project-go/SingleElev/Elevio"
 	requests "Project-go/SingleElev/Requests"
-	"time"
-
 	"encoding/json"
 	"os/exec"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 var (
@@ -54,6 +53,7 @@ func GetOrderCounter() [config.NumberElev]int {
 	return orderCounter
 }
 
+//Will not lead to race condition as this is the only place orderCounter is altered when Slave. 
 func UpdateOrderCounter(newOrderCounter [config.NumberElev]int) {
 	orderCounter = newOrderCounter
 }

@@ -123,8 +123,9 @@ func AliveRecievedFromSlave(senderElevID int, senderE elevio.Elevator, setMaster
 }
 
 func AliveRecievedFromMaster(senderElevID int, inactive bool, localElev elevio.Elevator, setMaster chan bool) {
-
-	aliveMasterTimer = resetTimer(aliveMasterTimer, 2*config.WatchdogDuration*time.Second)
+	if masterID != config.ElevID{
+		aliveMasterTimer = resetTimer(aliveMasterTimer, 2*config.WatchdogDuration*time.Second)
+	}
 
 	if masterID == -1 {
 		masterID = senderElevID

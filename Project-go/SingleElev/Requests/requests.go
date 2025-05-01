@@ -2,7 +2,7 @@ package requests
 
 import (
 	config "Project-go/Config"
-	"Project-go/driver-go/elevio"
+	elevio "Project-go/SingleElev/Elevio"
 )
 
 func RequestShouldStop(e elevio.Elevator) bool {
@@ -38,7 +38,7 @@ func hasRequestAtFloor(e elevio.Elevator) bool {
 }
 
 func requestsAbove(e elevio.Elevator) bool {
-	for a := e.CurrentFloor + 1; a < e.NumFloors; a++ {
+	for a := e.CurrentFloor + 1; a < config.NumberFloors; a++ {
 		for i := elevio.ButtonType(0); i < config.NumberBtn; i++ {
 			if e.ActiveOrders[a][i] {
 				return true
@@ -107,39 +107,46 @@ func ReqestShouldClearImmideatly(e elevio.Elevator, floor int, b elevio.ButtonTy
 }
 
 // Removing orders from allActiveOrders in the ordermanager based on the elevator's current floor and direction. Used in the ordermanager
-func RequestClearAtCurrentFloor(e elevio.Elevator, AllActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
+func RequestClearAtCurrentFloor(e elevio.Elevator, allActiveOrders [config.NumberElev][config.NumberFloors][config.NumberBtn]bool,
+	orderBlocked bool, orderBlockedChan chan int) [config.NumberElev][config.NumberFloors][config.NumberBtn]bool {
 	if e.Behaviour == elevio.EB_DoorOpen {
-		AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_Cab] = false
+		allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_Cab] = false
 		switch e.Direction {
 		case elevio.MD_Up:
-			if (!requestsAbove(e) && !AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]) {
-				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
-			} else {
-				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+			if !requestsAbove(e) && !allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] {
+				if !orderBlocked {
+					allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+				}
+			} else if allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] {
+				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+				orderBlockedChan <- e.ElevatorID
 			}
 		case elevio.MD_Down:
-			if (!requestsBelow(e) && !AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]) {
-				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
-			} else {
-				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+			if !requestsBelow(e) && !allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] {
+				if !orderBlocked {
+					allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+				}
+			} else if allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] {
+				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+				orderBlockedChan <- e.ElevatorID
 			}
 		case elevio.MD_Stop:
-			if(requestsBelow(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]){
-				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
-			}else if(requestsAbove(e) && AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]){
-				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
-			}else if (AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown]){
-				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+			if requestsBelow(e) && allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] {
+				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+			} else if requestsAbove(e) && allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] {
+				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+			} else if allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] {
+				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
 
-			}else if (AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp]){
-				AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+			} else if allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] {
+				allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
 			}
 		default:
-			AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
-			AllActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
+			allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallUp] = false
+			allActiveOrders[e.ElevatorID][e.CurrentFloor][elevio.BT_HallDown] = false
 		}
 	}
 
-	return AllActiveOrders
+	return allActiveOrders
 
 }

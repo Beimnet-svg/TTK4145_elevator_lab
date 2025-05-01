@@ -1,10 +1,21 @@
 package config
 
 const (
-	NumberFloors     = 4
-	NumberElev       = 3
-	NumberBtn        = 3
-	WatchdogDuration = 2
+	NumberFloors = 4
+	NumberElev   = 3
+	NumberBtn    = 3
+
 	DoorOpenDuration = 3
+	WatchdogDuration = 2
 	InactiveDuration = 10
+
+	SendDelay = 50
+	PollRate  = 20
+	DebugMode = false
 )
+
+var ElevID = -1
+
+func SetElevID(id int) {
+	ElevID = id
+}
